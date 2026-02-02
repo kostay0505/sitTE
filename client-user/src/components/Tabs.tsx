@@ -1,0 +1,221 @@
+'use client';
+
+import React, { memo, useEffect, useMemo } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { cn } from '@/utils/cn';
+import { TgIcon2, LogoIcon } from './common/SvgIcon';
+import { Briefcase, DoorOpen, LayoutGrid, UserRound } from 'lucide-react';
+import { ROUTES } from '@/config/routes';
+import { TG_LINK } from '@/config/constants';
+import { LoginModal } from '@/components/Auth/LoginModal';
+import { RegisterModal } from '@/components/Auth/RegisterModal';
+import { EmailConfirmModal } from '@/components/Auth/EmailConfirmModal';
+import { PasswordRecoveryModal } from '@/components/Auth/PasswordRecoveryModal';
+import { loginWithEmail } from '@/api/auth/methods';
+import { saveTokens, clearTokens, getTokens } from '@/api/auth/tokenStorage';
+import { isTokenExpired } from '@/utils/tokenUtils';
+import { useAuthStore } from '@/stores/authStore';
+
+interface TabItem {
+  path: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label?: string;
+  isActive: (pathname: string) => boolean;
+  external?: boolean;
+  isLogo?: boolean;
+  text?: string;
+}
+
+export const Tabs: React.FC = memo(() => {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { push } = useRouter();
+  const authMode = useAuthStore(s => s.authMode);
+  const setAuthMode = useAuthStore(s => s.setAuthMode);
+
+  const authEmail = useAuthStore(s => s.authEmail);
+  const setAuthEmail = useAuthStore(s => s.setAuthEmail);
+
+  const authPassword = useAuthStore(s => s.authPassword);
+  const setAuthPassword = useAuthStore(s => s.setAuthPassword);
+
+  const isAuthorized = useAuthStore(s => s.isAuthorized);
+  const setAuthorized = useAuthStore(s => s.setAuthorized);
+
+  useEffect(() => {
+    const tokens = getTokens();
+
+    if (tokens && tokens.accessToken && !isTokenExpired(tokens.accessToken)) {
+      setAuthorized(true);
+    } else {
+      setAuthorized(false);
+      clearTokens();
+    }
+  }, [setAuthorized]);
+
+  const tabs: TabItem[] = useMemo(() => {
+    return [
+      {
+        path: ROUTES.CATALOG,
+        icon: LayoutGrid,
+        isActive: pathname => pathname.startsWith(ROUTES.CATALOG),
+        text: 'Каталог',
+      },
+      {
+        path: TG_LINK,
+        icon: TgIcon2,
+        isActive: () => false,
+        external: true,
+        text: 'Телеграмм TE',
+      },
+      {
+        path: ROUTES.HOME,
+        icon: LogoIcon,
+        isActive: pathname => pathname === ROUTES.HOME,
+        isLogo: true,
+      },
+      {
+        path: ROUTES.JOB,
+        icon: Briefcase,
+        isActive: pathname => pathname.startsWith(ROUTES.JOB),
+        text: 'Работа',
+      },
+      {
+        path: ROUTES.PROFILE,
+        icon: UserRound,
+        isActive: pathname => pathname.startsWith(ROUTES.PROFILE),
+        text: 'Аккаунт',
+      },
+    ];
+  }, []);
+
+  const handleNavigate = (tab: TabItem) => {
+    if (tab.external) {
+      window.open(tab.path, '_blank');
+      return;
+    }
+
+    push(tab.path);
+  };
+
+  return (
+    <>
+      <div
+        className={cn(
+          'fixed left-2 right-2 z-50',
+          'flex justify-around items-center gap-4',
+          'bg-[#F5F5FA] rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.1)]',
+          'h-[60px] px-4',
+          'bottom-4',
+          'md:w-full md:top-0 md:bottom-auto md:bg-white md:h-[100px]',
+          'md:left-1/2 md:right-auto md:transform md:-translate-x-1/2 md:shadow-none',
+          'md:justify-center md:gap-20',
+        )}
+      >
+        {tabs.map((tab, index) => {
+          if (!isAuthorized && tab.path.startsWith(ROUTES.PROFILE)) {
+            return (
+              <button
+                key={index}
+                onClick={() => setAuthMode('login')}
+                className={cn(
+                  'flex flex-col items-center justify-center gap-1 cursor-pointer text-[#1E1E1E] transition',
+                  'hover:text-green-700 active:text-green-700',
+                  'md:text-sm',
+                )}
+              >
+                <DoorOpen className='w-7 h-7 md:w-9 md:h-9' />
+                <span className={cn('hidden md:block')}>Войти</span>
+              </button>
+            );
+          }
+
+          const Icon = tab.icon;
+          const isActive = tab.isActive(pathname);
+          const isLogo = tab?.isLogo;
+          const text = tab?.text;
+
+          return (
+            <button
+              key={index}
+              onClick={() => handleNavigate(tab)}
+              className={cn(
+                'flex flex-col items-center justify-center gap-1 cursor-pointer text-[#1E1E1E] transition',
+                'hover:text-green-700 active:text-green-700',
+                isActive && 'text-green-700',
+                'md:text-sm',
+              )}
+            >
+              <Icon
+                className={cn(
+                  isLogo
+                    ? 'w-[60px] h-7 md:h-[70px] md:object-contain md:w-auto'
+                    : 'w-7 h-7 md:w-9 md:h-9',
+                )}
+              />
+              {text && <span className={cn('hidden md:block')}>{text}</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      <LoginModal
+        open={authMode === 'login'}
+        onClose={() => setAuthMode('none')}
+        onSuccess={() => {
+          setAuthorized(true);
+          setAuthMode('none');
+        }}
+        onOpenRegister={() => setAuthMode('register')}
+        onOpenForgotPassword={() => setAuthMode('resetPassword')}
+        onEmailUnconfirmed={email => {
+          setAuthEmail(email);
+          setAuthMode('confirmEmail');
+        }}
+      />
+
+      <RegisterModal
+        open={authMode === 'register'}
+        onClose={() => setAuthMode('none')}
+        onOpenLogin={() => setAuthMode('login')}
+        onRegistered={(email, password) => {
+          setAuthEmail(email);
+          setAuthPassword(password);
+          setAuthMode('confirmEmail');
+        }}
+      />
+
+      <EmailConfirmModal
+        open={authMode === 'confirmEmail'}
+        email={authEmail}
+        onClose={() => setAuthMode('none')}
+        onSuccess={async () => {
+          if (authEmail && authPassword) {
+            try {
+              const tokens = await loginWithEmail({
+                email: authEmail,
+                password: authPassword,
+              });
+
+              saveTokens(tokens);
+            } catch (error) {}
+          }
+
+          setAuthorized(true);
+          setAuthMode('none');
+        }}
+      />
+
+      <PasswordRecoveryModal
+        open={authMode === 'resetPassword'}
+        onClose={() => setAuthMode('none')}
+        onSuccess={email => {
+          setAuthEmail(email);
+          setAuthMode('login');
+        }}
+      />
+    </>
+  );
+});
+
+Tabs.displayName = 'Tabs';

@@ -1,0 +1,27 @@
+import { Module, forwardRef } from '@nestjs/common';
+import { ProductController } from './product.controller';
+import { ProductService } from './product.service';
+import { ProductRepository } from './product.repository';
+import { BrandModule } from '../brand/brand.module';
+import { CategoryModule } from '../category/category.module';
+import { FavoriteProductModule } from '../favorite-product/favorite-product.module';
+import { ViewedProductModule } from '../viewed-product/viewed-product.module';
+import { UsersModule } from '../user/user.module';
+import { TelegramBotModule } from '../telegram/telegram.bots.module';
+import { HrefModule } from '../../services/href/href.module';
+
+@Module({
+  imports: [
+    forwardRef(() => UsersModule),
+    BrandModule,
+    forwardRef(() => HrefModule),
+    CategoryModule,
+    FavoriteProductModule,
+    ViewedProductModule,
+    forwardRef(() => TelegramBotModule)
+  ],
+  controllers: [ProductController],
+  providers: [ProductService, ProductRepository],
+  exports: [ProductService, ProductRepository]
+})
+export class ProductModule {}

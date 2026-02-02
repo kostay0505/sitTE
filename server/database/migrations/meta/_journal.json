@@ -1,0 +1,90 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1753715483944,
+      "tag": "0000_wakeful_timeslip",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1755452361848,
+      "tag": "0001_red_scalphunter",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1755590030178,
+      "tag": "0002_breezy_silver_samurai",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1755590030179,
+      "tag": "0003_add_categories_data",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1755630642421,
+      "tag": "0004_curvy_luckman",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1755630642422,
+      "tag": "0005_add_countries_data",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1755630642423,
+      "tag": "0006_add_cities_data",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1764589902923,
+      "tag": "0007_bitter_mother_askani",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1764834573880,
+      "tag": "0008_skinny_bastion",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1765454824607,
+      "tag": "0009_thankful_the_fury",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1769604075730,
+      "tag": "0010_mean_goliath",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1769689503746,
+      "tag": "0011_charming_jocasta",
+      "breakpoints": true
+    }
+  ]
+}

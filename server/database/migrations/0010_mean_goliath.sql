@@ -1,0 +1,1 @@
+ALTER TABLE `Brands` ADD `member` varchar(255);

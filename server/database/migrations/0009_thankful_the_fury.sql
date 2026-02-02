@@ -1,0 +1,1 @@
+ALTER TABLE `NewsletterSubscriptions` ADD `isDelete` boolean DEFAULT false NOT NULL;

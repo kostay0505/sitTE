@@ -1,0 +1,61 @@
+import { api } from '@/api/api';
+import { Product } from './models';
+
+export async function getAllProducts(): Promise<Product[]> {
+    try {
+        const [productsResponse, viewCountsResponse] = await Promise.all([
+            api.get<Product[]>('/products'),
+            api.get<{ productId: string; viewCount: number }[]>('/viewed-products/counts')
+        ]);
+
+        const viewCountsMap = new Map(
+            viewCountsResponse.data.map(item => [item.productId, item.viewCount])
+        );
+
+        return productsResponse.data.map(product => ({
+            ...product,
+            viewCount: viewCountsMap.get(product.id) || 0
+        }));
+    } catch (error: any) {
+        if (error?.response?.data?.message) {
+            throw new Error(error.response.data.message);
+        }
+        throw new Error('Не удалось загрузить товары');
+    }
+}
+
+export async function getProductById(id: string): Promise<Product> {
+    try {
+        const response = await api.get<Product>(`/products/${id}`);
+        return response.data;
+    } catch (error: any) {
+        if (error?.response?.data?.message) {
+            throw new Error(error.response.data.message);
+        }
+        throw new Error('Не удалось загрузить товар');
+    }
+}
+
+export async function createProduct(data: Omit<Product, 'id'>): Promise<Product> {
+    try {
+        const response = await api.post<Product>('/products/admin', data);
+        return response.data;
+    } catch (error: any) {
+        if (error?.response?.data?.message) {
+            throw new Error(error.response.data.message);
+        }
+        throw new Error('Не удалось создать товар');
+    }
+}
+
+export async function updateProduct(id: string, data: Partial<Omit<Product, 'id'>>): Promise<Product> {
+    try {
+        const response = await api.put<Product>(`/products/admin/${id}`, data);
+        return response.data;
+    } catch (error: any) {
+        if (error?.response?.data?.message) {
+            throw new Error(error.response.data.message);
+        }
+        throw new Error('Не удалось обновить товар');
+    }
+}

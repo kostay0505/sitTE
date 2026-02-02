@@ -1,0 +1,81 @@
+@import 'tailwindcss';
+
+@theme inline {
+  /* 🎨 Colors */
+  --color-primary-green: #21403c;
+}
+
+body {
+  background: #efeff4;
+  overflow: hidden;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  padding: 0;
+  margin: 0;
+  font-family: 'Comfortaa', sans-serif;
+
+  @media screen and (min-width: 768px) {
+    background: #fff;
+  }
+}
+input::selection,
+textarea::selection {
+  background: #d4d4d4;
+}
+
+input,
+textarea {
+  caret-color: black;
+}
+body::-webkit-scrollbar {
+  display: none;
+}
+
+html {
+  height: 100%;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overflow: hidden;
+}
+
+html::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  /* IE и Edge */
+  -ms-overflow-style: none;
+  /* Firefox */
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  /* Safari и Chrome */
+  display: none;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 87, 34, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(255, 87, 34, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 87, 34, 0);
+  }
+}
+
+.swiper-button-prev,
+.swiper-button-next {
+  width: 35px !important;
+  color: #313943 !important;
+  height: 35px !important;
+  padding: 8px !important;
+  border-radius: 6px !important;
+}
+
+.swiper-button-next::after,
+.swiper-button-prev::after {
+  font-size: 24px !important;
+}

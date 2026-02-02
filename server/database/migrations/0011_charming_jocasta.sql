@@ -1,0 +1,1 @@
+ALTER TABLE `Brands` RENAME COLUMN `member` TO `contact`;
