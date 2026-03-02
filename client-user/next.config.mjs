@@ -1,35 +1,21 @@
-// Функция для извлечения домена из URL
 const getDomainFromUrl = url => {
-  if (!url) {
-    throw new Error('NEXT_PUBLIC_API_URL is not set');
-  }
+  if (!url) return null;
   try {
-    const domain = new URL(url).hostname;
-    return domain;
+    return new URL(url).hostname;
   } catch {
-    throw new Error('Invalid NEXT_PUBLIC_API_URL');
+    return null;
   }
 };
 
-// Получаем домен из переменной окружения
 const apiDomain = getDomainFromUrl(process.env.NEXT_PUBLIC_API_URL);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: apiDomain,
-      },
-      {
-        protocol: 'https',
-        hostname: 'localhost',
-      },
-      {
-        protocol: 'http',
-        hostname: 'localhost',
-      },
+      ...(apiDomain ? [{ protocol: 'https', hostname: apiDomain }] : []),
+      { protocol: 'https', hostname: 'localhost' },
+      { protocol: 'http',  hostname: 'localhost' },
     ],
   },
   allowedDevOrigins: ['127.0.0.1', 'localhost'],
