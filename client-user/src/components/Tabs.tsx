@@ -31,6 +31,8 @@ export const Tabs: React.FC = memo(() => {
   const pathname = usePathname();
   const router = useRouter();
   const { push } = useRouter();
+  // Hide tab bar on mobile when inside a specific chat window
+  const isChatWindow = /^\/chats\/[^/]+/.test(pathname);
   const authMode = useAuthStore(s => s.authMode);
   const setAuthMode = useAuthStore(s => s.setAuthMode);
 
@@ -118,6 +120,7 @@ export const Tabs: React.FC = memo(() => {
           'md:w-full md:top-0 md:bottom-auto md:bg-white md:h-[100px]',
           'md:left-1/2 md:right-auto md:transform md:-translate-x-1/2 md:shadow-none',
           'md:justify-center md:gap-16',
+          isChatWindow && 'hidden md:flex',
         )}
       >
         {tabs.map((tab, index) => {
