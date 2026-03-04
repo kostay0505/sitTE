@@ -4,20 +4,16 @@ export async function uploadFile(
   formData: FormData,
 ): Promise<{ filename: string }> {
   try {
+    // Do NOT set Content-Type manually — axios sets it with the correct multipart boundary
     const response = await api.post<{ filename: string }>(
       '/files/upload',
       formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      },
     );
     return response.data;
   } catch (error: any) {
     if (error?.response?.data?.message) {
       throw new Error(error.response.data.message);
     }
-    throw new Error('Не удалось загрузить файл');
+    throw new Error('Upload failed');
   }
 }
