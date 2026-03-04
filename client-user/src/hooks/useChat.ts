@@ -20,7 +20,8 @@ export function useChat(chatId: string) {
       enabled: !!isAuthorized && !!chatId,
     });
 
-  const messages: Message[] = data?.pages.flatMap((p) => p.items) ?? [];
+  // Server returns DESC (newest first per page), flatten then reverse for display (oldest at top)
+  const messages: Message[] = (data?.pages.flatMap((p) => p.items) ?? []).slice().reverse();
 
   // Socket for real-time INCOMING messages
   useEffect(() => {
@@ -38,13 +39,14 @@ export function useChat(chatId: string) {
       markChatRead(chatId).catch(() => {});
     };
 
-    const addMsg = (msg: Message) => {
+    const prependMsg = (msg: Message) => {
       qc.setQueryData(['chatMessages', chatId], (old: any) => {
         if (!old) return old;
         const pages = [...old.pages];
         if (pages.length > 0) {
           if (pages[0].items.find((m: Message) => m.id === msg.id)) return old;
-          pages[0] = { ...pages[0], items: [...pages[0].items, msg] };
+          // Prepend to keep DESC order (newest first in raw data)
+          pages[0] = { ...pages[0], items: [msg, ...pages[0].items] };
         }
         return { ...old, pages };
       });
@@ -54,12 +56,12 @@ export function useChat(chatId: string) {
     else socket.connect();
 
     socket.on('connect', onConnect);
-    socket.on('newMessage', addMsg);
+    socket.on('newMessage', prependMsg);
 
     return () => {
       socket.emit('leaveChat', chatId);
       socket.off('connect', onConnect);
-      socket.off('newMessage', addMsg);
+      socket.off('newMessage', prependMsg);
     };
   }, [isAuthorized, chatId, qc]);
 
@@ -74,7 +76,8 @@ export function useChat(chatId: string) {
           const pages = [...old.pages];
           if (pages.length > 0) {
             if (pages[0].items.find((m: Message) => m.id === msg.id)) return old;
-            pages[0] = { ...pages[0], items: [...pages[0].items, msg] };
+            // Prepend to keep DESC order (newest first in raw data)
+            pages[0] = { ...pages[0], items: [msg, ...pages[0].items] };
           }
           return { ...old, pages };
         });
