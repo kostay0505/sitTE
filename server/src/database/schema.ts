@@ -13,6 +13,8 @@ import { users } from '../app/modules/user/schemas/users';
 import { vacancies } from '../app/modules/vacancy/schemas/vacancies';
 import { viewedProducts } from '../app/modules/viewed-product/schemas/viewed-products';
 import { newsletterSubscriptions } from '../app/modules/newsletter-subscription/schemas/newsletter-subscriptions';
+import { chats } from '../app/modules/chat/schemas/chats';
+import { messages } from '../app/modules/chat/schemas/messages';
 
 export const databaseSchema = {
     accounts,
@@ -29,6 +31,8 @@ export const databaseSchema = {
     vacancies,
     viewedProducts,
     newsletterSubscriptions,
+    chats,
+    messages,
 } as const;
 
-export type Database = MySql2Database<typeof databaseSchema>; 
+export type Database = MySql2Database<typeof databaseSchema>;

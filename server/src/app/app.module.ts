@@ -26,6 +26,7 @@ import { JobsModule } from './modules/jobs/jobs.module';
 import { MailModule } from './services/mail/mail.module';
 import { NewsletterSubscriptionModule } from './modules/newsletter-subscription/newsletter-subscription.module';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ChatModule } from './modules/chat/chat.module';
 
 @Module({
   imports: [
@@ -71,7 +72,8 @@ import { ThrottlerModule } from '@nestjs/throttler';
     ViewedProductModule,
     JobsModule,
     MailModule,
-    NewsletterSubscriptionModule
+    NewsletterSubscriptionModule,
+    ChatModule,
   ],
   controllers: [],
   providers: [Logger]

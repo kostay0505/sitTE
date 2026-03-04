@@ -11,17 +11,19 @@ export interface SendMailOptions {
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private transporter: nodemailer.Transporter;
+  private transporter: nodemailer.Transporter | null = null;
 
   constructor() {
-    if (
-      !process.env.EMAIL_USER ||
-      !process.env.EMAIL_PASSWORD ||
-      !process.env.EMAIL_HOST ||
-      !process.env.EMAIL_PORT ||
-      !process.env.EMAIL_SECURE
-    ) {
-      throw new Error('SMTP credentials are missing');
+    const hasCredentials =
+      process.env.EMAIL_USER &&
+      process.env.EMAIL_PASSWORD &&
+      process.env.EMAIL_HOST &&
+      process.env.EMAIL_PORT &&
+      process.env.EMAIL_SECURE;
+
+    if (!hasCredentials) {
+      this.logger.warn('SMTP credentials are missing — email sending is disabled');
+      return;
     }
 
     this.transporter = nodemailer.createTransport({
@@ -36,12 +38,15 @@ export class MailService {
   }
 
   async sendMail(options: SendMailOptions) {
+    if (!this.transporter) {
+      this.logger.warn(`Email skipped (no SMTP): ${options.subject} -> ${options.to}`);
+      return { success: false, skipped: true };
+    }
     try {
       const info = await this.transporter.sendMail({
         from: process.env.EMAIL_FROM ?? process.env.EMAIL_USER,
         ...options
       });
-
       return { success: true, messageId: info.messageId };
     } catch (error) {
       this.logger.error(`Email error: ${error.stack}`);
@@ -49,7 +54,7 @@ export class MailService {
     }
   }
 
-  async sendEmailVerification(email: string, code: string) {
+    async sendEmailVerification(email: string, code: string) {
     const html = this.wrapTemplate(
       'Подтверждение email',
       `

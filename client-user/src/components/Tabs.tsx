@@ -4,7 +4,7 @@ import React, { memo, useEffect, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/utils/cn';
 import { TgIcon2, LogoIcon } from './common/SvgIcon';
-import { Briefcase, DoorOpen, LayoutGrid, UserRound } from 'lucide-react';
+import { Briefcase, DoorOpen, LayoutGrid, MessageCircle, UserRound } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 import { TG_LINK } from '@/config/constants';
 import { LoginModal } from '@/components/Auth/LoginModal';
@@ -24,6 +24,7 @@ interface TabItem {
   external?: boolean;
   isLogo?: boolean;
   text?: string;
+  requiresAuth?: boolean;
 }
 
 export const Tabs: React.FC = memo(() => {
@@ -75,6 +76,13 @@ export const Tabs: React.FC = memo(() => {
         isLogo: true,
       },
       {
+        path: ROUTES.CHATS,
+        icon: MessageCircle,
+        isActive: pathname => pathname.startsWith(ROUTES.CHATS),
+        text: 'Чаты',
+        requiresAuth: true,
+      },
+      {
         path: ROUTES.JOB,
         icon: Briefcase,
         isActive: pathname => pathname.startsWith(ROUTES.JOB),
@@ -103,17 +111,20 @@ export const Tabs: React.FC = memo(() => {
       <div
         className={cn(
           'fixed left-2 right-2 z-50',
-          'flex justify-around items-center gap-4',
+          'flex justify-around items-center gap-2',
           'bg-[#F5F5FA] rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.1)]',
-          'h-[60px] px-4',
+          'h-[60px] px-2',
           'bottom-4',
           'md:w-full md:top-0 md:bottom-auto md:bg-white md:h-[100px]',
           'md:left-1/2 md:right-auto md:transform md:-translate-x-1/2 md:shadow-none',
-          'md:justify-center md:gap-20',
+          'md:justify-center md:gap-16',
         )}
       >
         {tabs.map((tab, index) => {
-          if (!isAuthorized && tab.path.startsWith(ROUTES.PROFILE)) {
+          if (
+            !isAuthorized &&
+            (tab.path.startsWith(ROUTES.PROFILE) || tab.requiresAuth)
+          ) {
             return (
               <button
                 key={index}
@@ -124,8 +135,14 @@ export const Tabs: React.FC = memo(() => {
                   'md:text-sm',
                 )}
               >
-                <DoorOpen className='w-7 h-7 md:w-9 md:h-9' />
-                <span className={cn('hidden md:block')}>Войти</span>
+                {tab.requiresAuth ? (
+                  <tab.icon className='w-7 h-7 md:w-9 md:h-9' />
+                ) : (
+                  <DoorOpen className='w-7 h-7 md:w-9 md:h-9' />
+                )}
+                <span className={cn('hidden md:block')}>
+                  {tab.requiresAuth ? tab.text : 'Войти'}
+                </span>
               </button>
             );
           }

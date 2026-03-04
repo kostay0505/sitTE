@@ -1,0 +1,23 @@
+import { forwardRef, Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ChatGateway } from './chat.gateway';
+import { ChatService } from './chat.service';
+import { ChatRepository } from './chat.repository';
+import { ChatController } from './chat.controller';
+
+@Module({
+  imports: [
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (config: ConfigService) => ({
+        secret: config.get<string>('USER_JWT_SECRET'),
+      }),
+      inject: [ConfigService],
+    }),
+  ],
+  providers: [ChatGateway, ChatService, ChatRepository],
+  controllers: [ChatController],
+  exports: [ChatService, ChatGateway],
+})
+export class ChatModule {}
