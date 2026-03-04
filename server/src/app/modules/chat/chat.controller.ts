@@ -9,24 +9,30 @@ export class ChatController {
   @Post()
   @JwtAuth()
   getOrCreate(@Req() req: any, @Body('productId') productId: string) {
-    return this.chatService.getOrCreateChat(productId, req.user.id);
+    return this.chatService.getOrCreateChat(productId, req.user.tgId);
   }
 
   @Get()
   @JwtAuth()
   getChatList(@Req() req: any, @Query('cursor') cursor?: string) {
-    return this.chatService.getChatList(req.user.id, cursor);
+    return this.chatService.getChatList(req.user.tgId, cursor);
   }
 
   @Get(':chatId/messages')
   @JwtAuth()
   getMessages(@Req() req: any, @Param('chatId') chatId: string, @Query('cursor') cursor?: string) {
-    return this.chatService.getMessages(chatId, req.user.id, cursor);
+    return this.chatService.getMessages(chatId, req.user.tgId, cursor);
+  }
+
+  @Get(':chatId')
+  @JwtAuth()
+  getChat(@Req() req: any, @Param('chatId') chatId: string) {
+    return this.chatService.getChatForUser(chatId, req.user.tgId);
   }
 
   @Patch(':chatId/read')
   @JwtAuth()
   markRead(@Req() req: any, @Param('chatId') chatId: string) {
-    return this.chatService.markRead(chatId, req.user.id);
+    return this.chatService.markRead(chatId, req.user.tgId);
   }
 }

@@ -43,7 +43,6 @@ export function CatalogDetailsClient() {
   const isLoading = status === 'pending';
   const isAuthorized = useAuthStore(s => s.isAuthorized);
 
-  // Get current user tgId from stored JWT
   const currentUserTgId = (() => {
     if (typeof window === 'undefined') return '';
     const tokens = getTokens();
@@ -53,7 +52,6 @@ export function CatalogDetailsClient() {
     return '';
   })();
 
-  // product.user.tgId is the seller's tgId
   const sellerTgId = product?.user?.tgId ?? null;
   const isSeller = !!sellerTgId && !!currentUserTgId && sellerTgId === currentUserTgId;
   const showChatButton = isAuthorized && !isSeller && !!product?.id;
@@ -70,8 +68,8 @@ export function CatalogDetailsClient() {
       setChatLoading(true);
       const chat = await getOrCreateChat(product.id);
       router.push('/chats/' + chat.id);
-    } catch {
-      // ignore error silently
+    } catch (err) {
+      console.error('Chat error:', err);
     } finally {
       setChatLoading(false);
     }
@@ -79,9 +77,26 @@ export function CatalogDetailsClient() {
 
   if (!isLoading && !product) {
     return (
-      <div className='p-2 pt-4 text-center text-black'>Продукт не найден</div>
+      <div className='p-2 pt-4 text-center text-black'>Товар не найден</div>
     );
   }
+
+  const chatButton = showChatButton ? (
+    <button
+      onClick={handleOpenChat}
+      disabled={chatLoading}
+      className='w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-xl transition-colors disabled:opacity-60'
+    >
+      {chatLoading ? (
+        <div className='w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin' />
+      ) : (
+        <svg className='w-5 h-5' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+          <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z' />
+        </svg>
+      )}
+      Написать продавцу
+    </button>
+  ) : null;
 
   return (
     <Page back={true}>
@@ -106,22 +121,7 @@ export function CatalogDetailsClient() {
             description={product?.description ?? ''}
             isLoading={isLoading}
           />
-          {showChatButton && (
-            <button
-              onClick={handleOpenChat}
-              disabled={chatLoading}
-              className='w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-xl transition-colors disabled:opacity-60'
-            >
-              {chatLoading ? (
-                <div className='w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin' />
-              ) : (
-                <svg className='w-5 h-5' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z' />
-                </svg>
-              )}
-              Написать продавцу
-            </button>
-          )}
+          {chatButton}
         </div>
 
         {/* Desktop version */}
@@ -146,22 +146,7 @@ export function CatalogDetailsClient() {
               description={product?.description ?? ''}
               isLoading={isLoading}
             />
-            {showChatButton && (
-              <button
-                onClick={handleOpenChat}
-                disabled={chatLoading}
-                className='flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors disabled:opacity-60 self-start'
-              >
-                {chatLoading ? (
-                  <div className='w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin' />
-                ) : (
-                  <svg className='w-5 h-5' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z' />
-                  </svg>
-                )}
-                Написать продавцу
-              </button>
-            )}
+            {chatButton}
           </div>
         </div>
       </Layout>

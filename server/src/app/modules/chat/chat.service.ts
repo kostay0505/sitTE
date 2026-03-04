@@ -28,6 +28,13 @@ export class ChatService {
     return this.chatRepository.getChatsForUser(userId, cursor);
   }
 
+  async getChatForUser(chatId: string, userId: string) {
+    const chat = await this.chatRepository.getChatById(chatId);
+    if (!chat) throw new NotFoundException('Chat not found');
+    if (chat.buyerId !== userId && chat.sellerId !== userId) throw new ForbiddenException('Access denied');
+    return chat;
+  }
+
   async getMessages(chatId: string, userId: string, cursor?: string) {
     const chat = await this.chatRepository.getChatById(chatId);
     if (!chat) throw new NotFoundException('Chat not found');
@@ -41,8 +48,12 @@ export class ChatService {
     if (chat.buyerId !== senderId && chat.sellerId !== senderId) throw new ForbiddenException('Access denied');
 
     const message = await this.chatRepository.createMessage(chatId, senderId, body, imageUrl, chat.sellerId, chat.buyerId);
-
     this.chatGateway.emitNewMessage(chatId, message);
+
+    const msgCount = await this.chatRepository.getMessageCount(chatId);
+    if (msgCount === 1 && senderId === chat.buyerId) {
+      this.notifySellerTelegram(chat, message).catch(() => {});
+    }
 
     return message;
   }
@@ -54,5 +65,19 @@ export class ChatService {
     await this.chatRepository.markRead(chatId, userId, chat);
     this.chatGateway.emitUnreadUpdate(userId, chatId, 0);
     return { ok: true };
+  }
+
+  private async notifySellerTelegram(chat: any, message: any) {
+    try {
+      const { Bot } = await import('grammy');
+      const token = process.env.TELEGRAM_BOT_TOKEN;
+      if (!token || !chat.sellerTgId) return;
+      const bot = new Bot(token);
+      const name = chat.buyerFirstName || chat.buyerUsername || 'Buyer';
+      const body = message.body || '[image]';
+      await bot.api.sendMessage(chat.sellerTgId, `New message on "${chat.productName}"\nFrom: ${name}\n\n${body}`);
+    } catch {
+      // ignore
+    }
   }
 }
