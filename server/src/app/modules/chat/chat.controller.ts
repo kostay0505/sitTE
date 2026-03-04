@@ -18,6 +18,21 @@ export class ChatController {
     return this.chatService.getChatList(req.user.tgId, cursor);
   }
 
+  @Post(':chatId/messages')
+  @JwtAuth()
+  sendMessage(
+    @Req() req: any,
+    @Param('chatId') chatId: string,
+    @Body() body: { body?: string; imageUrl?: string },
+  ) {
+    return this.chatService.sendMessage(
+      chatId,
+      req.user.tgId,
+      body.body ?? null,
+      body.imageUrl ?? null,
+    );
+  }
+
   @Get(':chatId/messages')
   @JwtAuth()
   getMessages(@Req() req: any, @Param('chatId') chatId: string, @Query('cursor') cursor?: string) {

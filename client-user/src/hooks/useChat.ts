@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useCallback } from 'react';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { getChatMessages, markChatRead } from '@/api/chat/methods';
+import { getChatMessages, markChatRead, sendChatMessage } from '@/api/chat/methods';
 import type { Message } from '@/api/chat/methods';
 import { getSocket } from '@/lib/socket';
 import { useAuthStore } from '@/stores/authStore';
@@ -22,53 +22,67 @@ export function useChat(chatId: string) {
 
   const messages: Message[] = data?.pages.flatMap((p) => p.items) ?? [];
 
+  // Socket for real-time INCOMING messages
   useEffect(() => {
     if (!isAuthorized || !chatId) return;
-    const socket = getSocket();
+    let socket: ReturnType<typeof getSocket>;
+    try {
+      socket = getSocket();
+    } catch (e) {
+      console.warn('Socket init error:', e);
+      return;
+    }
 
     const onConnect = () => {
       socket.emit('joinChat', chatId);
       markChatRead(chatId).catch(() => {});
     };
 
-    const onNewMessage = (msg: Message) => {
-      qc.setQueryData(
-        ['chatMessages', chatId],
-        (old: any) => {
-          if (!old) return old;
-          const pages = [...old.pages];
-          if (pages.length > 0) {
-            pages[0] = { ...pages[0], items: [...pages[0].items, msg] };
-          }
-          return { ...old, pages };
-        },
-      );
-      markChatRead(chatId).catch(() => {});
+    const addMsg = (msg: Message) => {
+      qc.setQueryData(['chatMessages', chatId], (old: any) => {
+        if (!old) return old;
+        const pages = [...old.pages];
+        if (pages.length > 0) {
+          if (pages[0].items.find((m: Message) => m.id === msg.id)) return old;
+          pages[0] = { ...pages[0], items: [...pages[0].items, msg] };
+        }
+        return { ...old, pages };
+      });
     };
 
-    if (socket.connected) {
-      onConnect();
-    } else {
-      socket.connect();
-    }
+    if (socket.connected) onConnect();
+    else socket.connect();
 
     socket.on('connect', onConnect);
-    socket.on('newMessage', onNewMessage);
+    socket.on('newMessage', addMsg);
 
     return () => {
       socket.emit('leaveChat', chatId);
       socket.off('connect', onConnect);
-      socket.off('newMessage', onNewMessage);
+      socket.off('newMessage', addMsg);
     };
   }, [isAuthorized, chatId, qc]);
 
+  // Send via REST — reliable regardless of socket state
   const sendMessage = useCallback(
-    (body: string, imageUrl?: string) => {
+    async (body: string, imageUrl?: string) => {
       if (!isAuthorized) return;
-      const socket = getSocket();
-      socket.emit('sendMessage', { chatId, body, imageUrl });
+      try {
+        const msg = await sendChatMessage(chatId, body || null, imageUrl ?? null);
+        qc.setQueryData(['chatMessages', chatId], (old: any) => {
+          if (!old) return old;
+          const pages = [...old.pages];
+          if (pages.length > 0) {
+            if (pages[0].items.find((m: Message) => m.id === msg.id)) return old;
+            pages[0] = { ...pages[0], items: [...pages[0].items, msg] };
+          }
+          return { ...old, pages };
+        });
+      } catch (e) {
+        console.error('sendMessage error:', e);
+      }
     },
-    [isAuthorized, chatId],
+    [isAuthorized, chatId, qc],
   );
 
   return {

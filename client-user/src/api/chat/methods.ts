@@ -66,3 +66,15 @@ export async function getChatMessages(
 export async function markChatRead(chatId: string): Promise<void> {
   await api.patch(`/chat/${chatId}/read`);
 }
+
+export async function sendChatMessage(
+  chatId: string,
+  body: string | null,
+  imageUrl?: string | null,
+): Promise<Message> {
+  const { data } = await api.post<Message>(`/chat/${chatId}/messages`, {
+    body,
+    imageUrl: imageUrl ?? null,
+  });
+  return data;
+}
