@@ -40,11 +40,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const payload = this.jwtService.verify(token, {
         secret: this.configService.get<string>('USER_JWT_SECRET'),
       });
-      (client as any).userId = payload.id;
-      if (!this.userSockets.has(payload.id)) {
-        this.userSockets.set(payload.id, new Set());
+      // JWT stores user id in 'sub' field
+      const userId = payload.sub as string;
+      if (!userId) {
+        client.disconnect();
+        return;
       }
-      this.userSockets.get(payload.id)!.add(client.id);
+      (client as any).userId = userId;
+      if (!this.userSockets.has(userId)) {
+        this.userSockets.set(userId, new Set());
+      }
+      this.userSockets.get(userId)!.add(client.id);
     } catch {
       client.disconnect();
     }
@@ -79,7 +85,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: { chatId: string; body?: string; imageUrl?: string },
   ) {
     const userId = (client as any).userId;
-    if (!userId) return;
+    if (!userId) return { error: 'Not authenticated' };
     try {
       const message = await this.chatService.sendMessage(
         data.chatId,
