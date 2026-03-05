@@ -58,7 +58,7 @@ export async function getChatMessages(
 ): Promise<PaginatedResult<Message>> {
   const { data } = await api.get<PaginatedResult<Message>>(
     `/chat/${chatId}/messages`,
-    { params: cursor ? { cursor } : {} },
+    { params: { ...(cursor ? { cursor } : {}), _t: Date.now() } },
   );
   return data;
 }
