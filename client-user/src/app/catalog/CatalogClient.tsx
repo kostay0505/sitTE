@@ -24,8 +24,6 @@ export default function CatalogClient() {
     searchParamsRef.current = searchParams;
   });
 
-  const category = searchParams.get('category') ?? '';
-  const subcategory = searchParams.get('subcategory') ?? '';
   const brand = searchParams.get('brand') ?? '';
   const priceFrom = searchParams.get('priceFrom') ?? '';
   const priceTo = searchParams.get('priceTo') ?? '';
@@ -74,25 +72,12 @@ export default function CatalogClient() {
     return () => debouncedPriceUpdate.cancel();
   }, [debouncedPriceUpdate]);
 
-  const { isLoading: categoriesLoading, categoryOptions, getSubcategoryOptions, all: allCategories } =
-    useCategoryFilterOptions();
+  const { isLoading: categoriesLoading, all: allCategories } = useCategoryFilterOptions();
 
-  // Parent categories with slug for the grid
   const parentCategories = useMemo(
     () => allCategories.filter(c => !c.parentId && c.slug).sort((a, b) => a.displayOrder - b.displayOrder),
     [allCategories],
   );
-
-  const subcategoryOptions = useMemo(
-    () => getSubcategoryOptions(category || null),
-    [getSubcategoryOptions, category],
-  );
-
-  useEffect(() => {
-    if (subcategory && !subcategoryOptions.some(o => o.value === subcategory)) {
-      updateParams({ subcategory: '' });
-    }
-  }, [subcategoryOptions, subcategory, updateParams]);
 
   const { data: brandsData, status: brandsStatus } = useAvailableBrands();
   const brandOptions = useMemo(
@@ -108,7 +93,6 @@ export default function CatalogClient() {
 
   const query = useMemo(
     () => ({
-      categoryId: subcategory || category || null,
       brandId: brand || null,
       priceCashFrom:
         priceFrom && !Number.isNaN(Number(priceFrom)) ? Number(priceFrom) : null,
@@ -117,7 +101,7 @@ export default function CatalogClient() {
       limit: 24,
       offset: 0,
     }),
-    [category, subcategory, brand, priceFrom, priceTo],
+    [brand, priceFrom, priceTo],
   );
 
   const infinite = useInfiniteProductsFlat(query);
@@ -147,7 +131,7 @@ export default function CatalogClient() {
           onSearch={search.setInput}
         />
 
-        {/* Category grid */}
+        {/* Category navigation grid */}
         {!categoriesLoading && parentCategories.length > 0 && (
           <div className='flex flex-wrap gap-2'>
             {parentCategories.map(cat => (
@@ -162,13 +146,14 @@ export default function CatalogClient() {
           </div>
         )}
 
+        {/* Brand + price filters only */}
         <ProductFilters
-          category={category}
-          onCategoryChange={v => updateParams({ category: v, subcategory: '' })}
-          categoryOptions={categoryOptions}
-          subcategory={subcategory}
-          onSubcategoryChange={v => updateParams({ subcategory: v })}
-          subcategoryOptions={subcategoryOptions}
+          category=''
+          onCategoryChange={() => {}}
+          categoryOptions={[]}
+          subcategory=''
+          onSubcategoryChange={() => {}}
+          subcategoryOptions={[]}
           brandId={brand}
           onBrandChange={v => updateParams({ brand: v })}
           brandOptions={brandOptions}
@@ -177,7 +162,7 @@ export default function CatalogClient() {
           onPriceFromChange={handlePriceFromChange}
           priceTo={priceToInput}
           onPriceToChange={handlePriceToChange}
-          loading={categoriesLoading}
+          loading={false}
           className='grid grid-cols-2'
         />
 
