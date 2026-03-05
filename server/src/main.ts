@@ -4,6 +4,7 @@ import { Logger } from './app/classes/logger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import { ValidationPipe } from '@nestjs/common';
+import helmet from 'helmet';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -12,14 +13,44 @@ async function bootstrap() {
   }
 
   app.useLogger(app.get(Logger));
-
   app.use(cookieParser());
 
+  // ─── Helmet: security headers ───
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          imgSrc: ["'self'", 'data:', 'https:'],
+          connectSrc: ["'self'", 'wss:', 'https:'],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          fontSrc: ["'self'", 'https:', 'data:'],
+          frameSrc: ["'none'"],
+          objectSrc: ["'none'"],
+        },
+      },
+      crossOriginEmbedderPolicy: false, // Needed for images from external CDN
+    }),
+  );
+
+  // ─── CORS: strict whitelist ───
+  const allowedOrigins = [
+    'https://sitte2.vercel.app',
+    'https://touringexpertsale.ru',
+    'https://www.touringexpertsale.ru',
+  ];
+
   app.enableCors({
-    origin: true,
-    methods: 'GET,PUT,POST,DELETE,PATCH',
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, Postman)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error('Not allowed by CORS'), false);
+    },
+    methods: 'GET,PUT,POST,DELETE,PATCH,OPTIONS',
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   });
 
   app.setGlobalPrefix('api');

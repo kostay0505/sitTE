@@ -61,9 +61,17 @@ export class AuthService {
   private validateTelegramInitData(initDataRaw: string): boolean {
     try {
       const initData = new URLSearchParams(initDataRaw);
-      const dataCheckString = Object.entries(
-        Object.fromEntries(initData.entries())
-      )
+
+      // Security: check auth_date is not older than 24 hours
+      const authDate = initData.get('auth_date');
+      if (!authDate) return false;
+      const age = Math.floor(Date.now() / 1000) - parseInt(authDate, 10);
+      if (age > 86400) {
+        this.logger.warn(`Telegram initData expired: age=${age}s`);
+        return false;
+      }
+
+      const dataCheckString = Object.entries(Object.fromEntries(initData.entries()))
         .filter(([key]) => key !== 'hash')
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([key, value]) => `${key}=${value}`)
@@ -80,9 +88,7 @@ export class AuthService {
 
       return hash === initData.get('hash');
     } catch (error) {
-      this.logger.error(
-        `Error validating Telegram init data: ${error.message}`
-      );
+      this.logger.error(`Error validating Telegram init data: ${error.message}`);
       return false;
     }
   }

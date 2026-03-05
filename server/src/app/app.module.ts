@@ -43,14 +43,39 @@ import { ChatModule } from './modules/chat/chat.module';
         }
       })
     }),
-    ThrottlerModule.forRoot({
-      throttlers: [
-        {
-          ttl: 1000 * 60 * 10,
-          limit: 100
-        }
-      ]
-    }),
+    // Multiple named throttlers for different endpoint classes
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60_000,       // 1 minute
+        limit: 100,
+      },
+      {
+        name: 'auth',
+        ttl: 15 * 60_000,  // 15 minutes
+        limit: 5,
+      },
+      {
+        name: 'register',
+        ttl: 60 * 60_000,  // 1 hour
+        limit: 10,
+      },
+      {
+        name: 'upload',
+        ttl: 60 * 60_000,  // 1 hour
+        limit: 20,
+      },
+      {
+        name: 'chat',
+        ttl: 60_000,       // 1 minute
+        limit: 60,
+      },
+      {
+        name: 'products',
+        ttl: 60_000,       // 1 minute
+        limit: 300,
+      },
+    ]),
     ScheduleModule.forRoot(),
     FilesModule,
     TelegramBotModule,

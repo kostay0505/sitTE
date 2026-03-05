@@ -27,7 +27,7 @@ import {
 import { LoginDto } from './dto/user-login.dto';
 import { ForgotPasswordDto, ResetPasswordDto } from './dto/reset-password';
 import { TelegramAuthDto } from './dto/telegram-auth.dto';
-import { Throttle } from '@nestjs/throttler';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { EmailThrottlerGuard } from '../../guards/email-throttler.guard';
 import { CodeAttemptThrottlerGuard } from '../../guards/code-attempt-throttler.guard';
 import { TelegramBot } from '../telegram/telegram.bot';
@@ -41,23 +41,19 @@ export class AuthController {
     private readonly telegramBot: TelegramBot
   ) {}
 
-  private setAdminCookies(
-    res: Response,
-    tokenResponse: AdminTokenResponse
-  ): void {
+  private setAdminCookies(res: Response, tokenResponse: AdminTokenResponse): void {
     res.cookie('admin_access_token', tokenResponse.accessToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
-      maxAge: 2 * 60 * 60 * 1000, // 2 часа
+      maxAge: 2 * 60 * 60 * 1000,
       path: '/'
     });
-
     res.cookie('admin_refresh_token', tokenResponse.refreshToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 дней
+      maxAge: 30 * 24 * 60 * 60 * 1000,
       path: '/api/auth/admin'
     });
   }
@@ -67,21 +63,18 @@ export class AuthController {
     res.clearCookie('admin_refresh_token', { path: '/api/auth/admin' });
   }
 
+  // Telegram Mini App login: 5 attempts per 15 min
+  @Throttle({ auth: { limit: 5, ttl: 15 * 60_000 } })
   @Post('token/create')
   @HttpCode(HttpStatus.OK)
-  async createToken(
-    @Body() dto: CreateTokenDto,
-    @Req() req: Request
-  ): Promise<TokenResponse> {
+  async createToken(@Body() dto: CreateTokenDto, @Req() req: Request): Promise<TokenResponse> {
     return this.service.createToken(dto, req);
   }
 
+  @SkipThrottle()
   @Post('token/refresh')
   @HttpCode(HttpStatus.OK)
-  async refreshToken(
-    @Body() dto: RefreshTokenDto,
-    @Req() req: Request
-  ): Promise<TokenResponse> {
+  async refreshToken(@Body() dto: RefreshTokenDto, @Req() req: Request): Promise<TokenResponse> {
     return this.service.refreshToken(dto, req);
   }
 
@@ -92,6 +85,8 @@ export class AuthController {
     await this.service.removeAllUserTokens(req.user.tgId);
   }
 
+  // Admin login: 5 attempts per 15 min
+  @Throttle({ auth: { limit: 5, ttl: 15 * 60_000 } })
   @Post('admin/login')
   @HttpCode(HttpStatus.OK)
   async adminLogin(
@@ -100,16 +95,11 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response
   ): Promise<{ accountId: string; login: string; message: string }> {
     const tokenResponse = await this.service.adminLogin(dto, req);
-
     this.setAdminCookies(res, tokenResponse);
-
-    return {
-      accountId: tokenResponse.accountId,
-      login: tokenResponse.login,
-      message: 'Успешная авторизация'
-    };
+    return { accountId: tokenResponse.accountId, login: tokenResponse.login, message: 'Успешная авторизация' };
   }
 
+  @SkipThrottle()
   @Post('admin/refresh')
   @HttpCode(HttpStatus.OK)
   async adminRefreshToken(
@@ -117,68 +107,56 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response
   ): Promise<{ accountId: string; login: string; message: string }> {
     const refreshToken = req.cookies?.admin_refresh_token;
-
-    if (!refreshToken) {
-      throw new Error('Refresh token не найден в cookies');
-    }
-
-    const tokenResponse = await this.service.adminRefreshToken(
-      { refreshToken },
-      req
-    );
-
+    if (!refreshToken) throw new Error('Refresh token не найден в cookies');
+    const tokenResponse = await this.service.adminRefreshToken({ refreshToken }, req);
     this.setAdminCookies(res, tokenResponse);
-
-    return {
-      accountId: tokenResponse.accountId,
-      login: tokenResponse.login,
-      message: 'Токены обновлены'
-    };
+    return { accountId: tokenResponse.accountId, login: tokenResponse.login, message: 'Токен обновлён' };
   }
 
   @Post('admin/logout')
   @HttpCode(HttpStatus.OK)
-  async adminLogout(
-    @Res({ passthrough: true }) res: Response
-  ): Promise<{ message: string }> {
+  async adminLogout(@Res({ passthrough: true }) res: Response): Promise<{ message: string }> {
     this.clearAdminCookies(res);
     return { message: 'Успешный выход' };
   }
 
-  @Throttle({ default: { limit: 3, ttl: 60 * 60 * 1000 } })
+  // Register: 10 per hour per IP
+  @Throttle({ register: { limit: 10, ttl: 60 * 60_000 } })
   @UseGuards(EmailThrottlerGuard)
   @Post('register')
   async register(@Body() dto: RegisterDto) {
     return this.service.register(dto);
   }
 
-  @Throttle({ default: { limit: 5, ttl: 60 * 60 * 1000 } })
+  @Throttle({ default: { limit: 5, ttl: 60 * 60_000 } })
   @UseGuards(CodeAttemptThrottlerGuard)
   @Post('confirm-email')
   async confirmEmail(@Body() dto: ConfirmEmailDto) {
     return this.service.confirmEmail(dto);
   }
 
-  @Throttle({ default: { limit: 3, ttl: 60 * 60 * 1000 } })
+  @Throttle({ default: { limit: 3, ttl: 60 * 60_000 } })
   @UseGuards(EmailThrottlerGuard)
   @Post('confirm-email/resend')
   async resendConfirmEmail(@Body() dto: ResendEmailDto) {
     return this.service.resendEmailVerification(dto);
   }
 
+  // Email login: 5 attempts per 15 min
+  @Throttle({ auth: { limit: 5, ttl: 15 * 60_000 } })
   @Post('login')
   async login(@Body() dto: LoginDto, @Req() req: Request) {
     return this.service.login(dto, req);
   }
 
-  @Throttle({ default: { limit: 3, ttl: 60 * 60 * 1000 } })
+  @Throttle({ default: { limit: 3, ttl: 60 * 60_000 } })
   @UseGuards(EmailThrottlerGuard)
   @Post('password/forgot')
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.service.sendPasswordResetCode(dto);
   }
 
-  @Throttle({ default: { limit: 5, ttl: 60 * 60 * 1000 } })
+  @Throttle({ default: { limit: 5, ttl: 60 * 60_000 } })
   @UseGuards(CodeAttemptThrottlerGuard)
   @Post('password/reset')
   async resetPassword(@Body() dto: ResetPasswordDto) {
@@ -188,22 +166,19 @@ export class AuthController {
   @Post('telegram/auth')
   @JwtAuth()
   @HttpCode(HttpStatus.OK)
-  async telegramAuth(
-    @Body() dto: TelegramAuthDto,
-    @Req() req: RequestWithUser
-  ): Promise<TokenResponse> {
+  async telegramAuth(@Body() dto: TelegramAuthDto, @Req() req: RequestWithUser): Promise<TokenResponse> {
     return this.service.handleTelegramAuth(dto, req.user, req);
   }
 
+  // Telegram widget login: 5 per 15 min
+  @Throttle({ auth: { limit: 5, ttl: 15 * 60_000 } })
   @Post('telegram/login')
   @HttpCode(HttpStatus.OK)
-  async telegramLogin(
-    @Body() dto: TelegramAuthDto,
-    @Req() req: Request
-  ): Promise<TokenResponse> {
+  async telegramLogin(@Body() dto: TelegramAuthDto, @Req() req: Request): Promise<TokenResponse> {
     return this.service.loginWithTelegram(dto, req);
   }
 
+  @SkipThrottle()
   @Get('telegram/bot-username')
   @HttpCode(HttpStatus.OK)
   async getBotUsername(): Promise<{ username: string }> {
