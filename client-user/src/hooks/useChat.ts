@@ -20,10 +20,10 @@ export function useChat(chatId: string) {
       enabled: !!isAuthorized && !!chatId,
     });
 
-  // Server returns DESC (newest first per page), flatten then reverse for display (oldest at top)
+  // Server returns DESC (newest first), reverse for display (oldest at top, newest at bottom)
   const messages: Message[] = (data?.pages.flatMap((p) => p.items) ?? []).slice().reverse();
 
-  // Socket for real-time INCOMING messages
+  // Socket for real-time INCOMING messages from other users
   useEffect(() => {
     if (!isAuthorized || !chatId) return;
     let socket: ReturnType<typeof getSocket>;
@@ -39,48 +39,32 @@ export function useChat(chatId: string) {
       markChatRead(chatId).catch(() => {});
     };
 
-    const prependMsg = (msg: Message) => {
-      qc.setQueryData(['chatMessages', chatId], (old: any) => {
-        if (!old) return old;
-        const pages = [...old.pages];
-        if (pages.length > 0) {
-          if (pages[0].items.find((m: Message) => m.id === msg.id)) return old;
-          // Prepend to keep DESC order (newest first in raw data)
-          pages[0] = { ...pages[0], items: [msg, ...pages[0].items] };
-        }
-        return { ...old, pages };
-      });
+    const onNewMessage = () => {
+      // Invalidate to reload from server when other user sends
+      qc.invalidateQueries({ queryKey: ['chatMessages', chatId] });
     };
 
     if (socket.connected) onConnect();
     else socket.connect();
 
     socket.on('connect', onConnect);
-    socket.on('newMessage', prependMsg);
+    socket.on('newMessage', onNewMessage);
 
     return () => {
       socket.emit('leaveChat', chatId);
       socket.off('connect', onConnect);
-      socket.off('newMessage', prependMsg);
+      socket.off('newMessage', onNewMessage);
     };
   }, [isAuthorized, chatId, qc]);
 
-  // Send via REST — reliable regardless of socket state
+  // Send via REST, then force refetch
   const sendMessage = useCallback(
     async (body: string, imageUrl?: string) => {
       if (!isAuthorized) return;
       try {
-        const msg = await sendChatMessage(chatId, body || null, imageUrl ?? null);
-        qc.setQueryData(['chatMessages', chatId], (old: any) => {
-          if (!old) return old;
-          const pages = [...old.pages];
-          if (pages.length > 0) {
-            if (pages[0].items.find((m: Message) => m.id === msg.id)) return old;
-            // Prepend to keep DESC order (newest first in raw data)
-            pages[0] = { ...pages[0], items: [msg, ...pages[0].items] };
-          }
-          return { ...old, pages };
-        });
+        await sendChatMessage(chatId, body || null, imageUrl ?? null);
+        // Force refetch so UI shows saved message
+        await qc.invalidateQueries({ queryKey: ['chatMessages', chatId] });
       } catch (e) {
         console.error('sendMessage error:', e);
       }
