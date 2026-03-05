@@ -2,7 +2,7 @@
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
-import { getChatById } from '@/api/chat/methods';
+import { getChatById, markChatRead } from '@/api/chat/methods';
 import type { Chat } from '@/api/chat/methods';
 import { useChat } from '@/hooks/useChat';
 import { ChatWindow } from '@/components/chat/ChatWindow';
@@ -36,6 +36,8 @@ export default function ChatPage({ params }: Props) {
       const tgId = extractTgIdFromToken(tokens.accessToken);
       if (tgId) setCurrentUserId(tgId);
     }
+
+    markChatRead(chatId).catch(() => {});
 
     getChatById(chatId)
       .then((data) => setChat(data))
