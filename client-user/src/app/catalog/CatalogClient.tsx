@@ -13,6 +13,7 @@ import { useInfiniteProductsFlat } from '@/features/products/hooks';
 import { useCategoryFilterOptions } from '@/features/category/hooks';
 import { useClientSearch } from '@/hooks/useClientSearch';
 import { useAvailableBrands } from '@/features/brands/hooks';
+import { Link } from '@/components/Link/Link';
 
 export default function CatalogClient() {
   const router = useRouter();
@@ -29,7 +30,6 @@ export default function CatalogClient() {
   const priceFrom = searchParams.get('priceFrom') ?? '';
   const priceTo = searchParams.get('priceTo') ?? '';
 
-  // Local state for price inputs so the UI is immediately responsive
   const [priceFromInput, setPriceFromInput] = useState(priceFrom);
   const [priceToInput, setPriceToInput] = useState(priceTo);
 
@@ -74,8 +74,14 @@ export default function CatalogClient() {
     return () => debouncedPriceUpdate.cancel();
   }, [debouncedPriceUpdate]);
 
-  const { isLoading: categoriesLoading, categoryOptions, getSubcategoryOptions } =
+  const { isLoading: categoriesLoading, categoryOptions, getSubcategoryOptions, all: allCategories } =
     useCategoryFilterOptions();
+
+  // Parent categories with slug for the grid
+  const parentCategories = useMemo(
+    () => allCategories.filter(c => !c.parentId && c.slug).sort((a, b) => a.displayOrder - b.displayOrder),
+    [allCategories],
+  );
 
   const subcategoryOptions = useMemo(
     () => getSubcategoryOptions(category || null),
@@ -129,7 +135,7 @@ export default function CatalogClient() {
   const emptyText = nothingFound
     ? 'Ничего не найдено'
     : isEmpty
-      ? 'Продуктов пока нет'
+      ? 'Товаров пока нет'
       : '';
 
   return (
@@ -140,6 +146,21 @@ export default function CatalogClient() {
           onChange={search.setInput}
           onSearch={search.setInput}
         />
+
+        {/* Category grid */}
+        {!categoriesLoading && parentCategories.length > 0 && (
+          <div className='flex flex-wrap gap-2'>
+            {parentCategories.map(cat => (
+              <Link
+                key={cat.id}
+                href={`/catalog/category/${cat.slug}`}
+                className='px-3 py-1.5 bg-gray-100 rounded-full text-xs md:text-sm text-black hover:bg-black hover:text-white transition-colors'
+              >
+                {cat.name}
+              </Link>
+            ))}
+          </div>
+        )}
 
         <ProductFilters
           category={category}
@@ -185,7 +206,7 @@ export default function CatalogClient() {
               onClick={() => infinite.fetchNextPage()}
               disabled={infinite.isFetchingNextPage}
             >
-              {infinite.isFetchingNextPage ? 'Загрузка…' : 'Показать ещё'}
+              {infinite.isFetchingNextPage ? 'Загрузка...' : 'Показать ещё'}
             </button>
           </div>
         )}
