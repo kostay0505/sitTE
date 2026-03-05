@@ -6,9 +6,7 @@ export async function getAllCategories(): Promise<Category[]> {
         const response = await api.get<Category[]>('/categories');
         return response.data;
     } catch (error: any) {
-        if (error?.response?.data?.message) {
-            throw new Error(error.response.data.message);
-        }
+        if (error?.response?.data?.message) throw new Error(error.response.data.message);
         throw new Error('Не удалось загрузить категории');
     }
 }
@@ -18,9 +16,7 @@ export async function getCategoryById(id: string): Promise<Category> {
         const response = await api.get<Category>(`/categories/${id}`);
         return response.data;
     } catch (error: any) {
-        if (error?.response?.data?.message) {
-            throw new Error(error.response.data.message);
-        }
+        if (error?.response?.data?.message) throw new Error(error.response.data.message);
         throw new Error('Не удалось загрузить категорию');
     }
 }
@@ -30,9 +26,7 @@ export async function createCategory(data: Omit<Category, 'id' | 'createdAt' | '
         const response = await api.post<Category>('/categories', data);
         return response.data;
     } catch (error: any) {
-        if (error?.response?.data?.message) {
-            throw new Error(error.response.data.message);
-        }
+        if (error?.response?.data?.message) throw new Error(error.response.data.message);
         throw new Error('Не удалось создать категорию');
     }
 }
@@ -42,9 +36,17 @@ export async function updateCategory(id: string, data: Partial<Omit<Category, 'i
         const response = await api.put<Category>(`/categories/${id}`, data);
         return response.data;
     } catch (error: any) {
-        if (error?.response?.data?.message) {
-            throw new Error(error.response.data.message);
-        }
+        if (error?.response?.data?.message) throw new Error(error.response.data.message);
         throw new Error('Не удалось обновить категорию');
+    }
+}
+
+export async function deleteCategory(id: string): Promise<{ success: boolean; message: string }> {
+    try {
+        const response = await api.delete<{ success: boolean; message: string }>(`/categories/${id}`);
+        return response.data;
+    } catch (error: any) {
+        if (error?.response?.data?.message) throw new Error(error.response.data.message);
+        throw new Error('Не удалось удалить категорию');
     }
 }

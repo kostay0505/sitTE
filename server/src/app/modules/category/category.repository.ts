@@ -16,11 +16,6 @@ export interface CategoryRow {
     isActive: boolean;
 }
 
-export interface CategoryShortRow {
-    id: string;
-    name: string;
-}
-
 @Injectable()
 export class CategoryRepository {
     constructor(
@@ -28,135 +23,99 @@ export class CategoryRepository {
     ) { }
 
     async create(dto: CreateCategoryDto): Promise<Omit<Category, 'createdAt' | 'updatedAt'>> {
-        const data = {
-            ...dto,
-            id: crypto.randomUUID(),
-        };
+        const data = { ...dto, id: crypto.randomUUID() };
         await this.db.insert(categories).values(data);
-
         const result = await this.findById(data.id);
-
-        if (!result) {
-            throw new Error('Category not created');
-        }
-
+        if (!result) throw new Error('Category not created');
         return result;
     }
 
     async update(id: string, dto: UpdateCategoryDto): Promise<boolean> {
-        await this.db.update(categories)
-            .set(dto)
-            .where(eq(categories.id, id));
+        await this.db.update(categories).set(dto).where(eq(categories.id, id));
+        return true;
+    }
+
+    async delete(id: string): Promise<boolean> {
+        await this.db.delete(categories).where(eq(categories.id, id));
         return true;
     }
 
     async findAll(): Promise<Omit<Category, 'createdAt' | 'updatedAt'>[]> {
         const result = await this.db.execute(sql`
-            SELECT
-                id,
-                name,
-                slug,
-                parentId,
-                displayOrder,
-                isActive
+            SELECT id, name, slug, parentId, displayOrder, isActive
             FROM ${categories}
             ORDER BY ${categories.displayOrder} ASC
         `) as SqlQueryResult<CategoryRow>;
-
-        if (!Array.isArray(result[0])) {
-            throw new Error('Unexpected query result format');
-        }
-
+        if (!Array.isArray(result[0])) throw new Error('Unexpected query result format');
         return result[0];
     }
 
     async findAllAvailable(): Promise<Omit<Category, 'createdAt' | 'updatedAt'>[]> {
         const result = await this.db.execute(sql`
-            SELECT
-                id,
-                name,
-                slug,
-                parentId,
-                displayOrder,
-                isActive
+            SELECT id, name, slug, parentId, displayOrder, isActive
             FROM ${categories}
             WHERE ${categories.isActive} = true
             ORDER BY ${categories.displayOrder} ASC
         `) as SqlQueryResult<CategoryRow>;
-
-        if (!Array.isArray(result[0])) {
-            throw new Error('Unexpected query result format');
-        }
-
+        if (!Array.isArray(result[0])) throw new Error('Unexpected query result format');
         return result[0];
     }
 
     async findById(id: string): Promise<Omit<Category, 'createdAt' | 'updatedAt'> | null> {
         const result = await this.db.execute(sql`
-            SELECT
-                id,
-                name,
-                slug,
-                parentId,
-                displayOrder,
-                isActive
+            SELECT id, name, slug, parentId, displayOrder, isActive
             FROM ${categories}
             WHERE ${categories.id} = ${id}
         `) as SqlQueryResult<Category>;
-
-        if (!Array.isArray(result[0])) {
-            throw new Error('Unexpected query result format');
-        }
-
+        if (!Array.isArray(result[0])) throw new Error('Unexpected query result format');
         return result[0][0] ?? null;
     }
 
     async findBySlug(slug: string): Promise<Omit<Category, 'createdAt' | 'updatedAt'> | null> {
         const result = await this.db.execute(sql`
-            SELECT
-                id,
-                name,
-                slug,
-                parentId,
-                displayOrder,
-                isActive
+            SELECT id, name, slug, parentId, displayOrder, isActive
             FROM ${categories}
             WHERE ${categories.slug} = ${slug}
         `) as SqlQueryResult<Category>;
+        if (!Array.isArray(result[0])) throw new Error('Unexpected query result format');
+        return result[0][0] ?? null;
+    }
 
-        if (!Array.isArray(result[0])) {
-            throw new Error('Unexpected query result format');
-        }
-
+    async findFallbackCategory(): Promise<Omit<Category, 'createdAt' | 'updatedAt'> | null> {
+        const result = await this.db.execute(sql`
+            SELECT id, name, slug, parentId, displayOrder, isActive
+            FROM ${categories}
+            WHERE ${categories.parentId} IS NULL
+            AND ${categories.name} = ${'Без категории'}
+            LIMIT 1
+        `) as SqlQueryResult<Category>;
+        if (!Array.isArray(result[0])) return null;
         return result[0][0] ?? null;
     }
 
     async findShortById(id: string): Promise<CategoryShort | null> {
         const result = await this.db.execute(sql`
-            SELECT
-                id,
-                name
-            FROM ${categories}
+            SELECT id, name FROM ${categories}
             WHERE ${categories.id} = ${id}
         `) as SqlQueryResult<CategoryShort>;
-
         if (!Array.isArray(result[0]) || !result[0][0]) return null;
-
         return result[0][0];
     }
 
     async getChildCategoryIds(parentId: string): Promise<string[]> {
         const result = await this.db.execute(sql`
-            SELECT
-                id
-            FROM ${categories}
+            SELECT id FROM ${categories}
             WHERE ${categories.parentId} = ${parentId}
         `) as SqlQueryResult<{ id: string }>;
+        if (!Array.isArray(result[0])) throw new Error('Unexpected query result format');
+        return result[0].map((c) => c.id);
+    }
 
-        if (!Array.isArray(result[0])) {
-            throw new Error('Unexpected query result format');
-        }
-
-        return result[0].map((category) => category.id);
+    async moveProductsToCategory(fromCategoryId: string, toCategoryId: string): Promise<void> {
+        await this.db.execute(sql`
+            UPDATE Products
+            SET categoryId = ${toCategoryId}
+            WHERE categoryId = ${fromCategoryId}
+        `);
     }
 }

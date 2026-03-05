@@ -1,5 +1,4 @@
-import { Injectable } from '@nestjs/common';
-import { CategoryShort } from './schemas/categories';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { type Category } from './schemas/categories';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -18,9 +17,7 @@ function toSlug(name: string): string {
 
 @Injectable()
 export class CategoryService {
-    constructor(
-        private readonly repository: CategoryRepository,
-    ) { }
+    constructor(private readonly repository: CategoryRepository) { }
 
     async create(dto: CreateCategoryDto): Promise<Omit<Category, 'createdAt' | 'updatedAt'>> {
         const slug = dto.slug ? toSlug(dto.slug) : toSlug(dto.name);
@@ -35,6 +32,34 @@ export class CategoryService {
             delete updateData.slug;
         }
         return this.repository.update(id, updateData);
+    }
+
+    async delete(id: string): Promise<{ moved: number }> {
+        const category = await this.repository.findById(id);
+        if (!category) throw new NotFoundException('Категория не найдена');
+
+        const fallback = await this.repository.findFallbackCategory();
+        if (!fallback) throw new BadRequestException('Категория "Без категории" не найдена в системе');
+        if (id === fallback.id) throw new BadRequestException('Нельзя удалить категорию "Без категории"');
+
+        // Collect all category ids to delete (self + children if parent)
+        const childIds = category.parentId === null
+            ? await this.repository.getChildCategoryIds(id)
+            : [];
+
+        // Move products from all affected categories to fallback
+        for (const childId of childIds) {
+            await this.repository.moveProductsToCategory(childId, fallback.id);
+        }
+        await this.repository.moveProductsToCategory(id, fallback.id);
+
+        // Delete children first (FK), then parent
+        for (const childId of childIds) {
+            await this.repository.delete(childId);
+        }
+        await this.repository.delete(id);
+
+        return { moved: childIds.length + 1 };
     }
 
     async findAll(): Promise<Omit<Category, 'createdAt' | 'updatedAt'>[]> {

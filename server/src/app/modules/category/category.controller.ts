@@ -1,13 +1,7 @@
 import {
-    Controller,
-    Get,
-    Post,
-    Put,
-    Body,
-    Param,
-    HttpCode,
-    HttpStatus,
-    NotFoundException,
+    Controller, Get, Post, Put, Delete,
+    Body, Param, HttpCode, HttpStatus,
+    NotFoundException, BadRequestException,
 } from '@nestjs/common';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -22,22 +16,18 @@ export class CategoryController {
     @Get()
     @AdminJwtAuth()
     async findAll(): Promise<Omit<Category, 'createdAt' | 'updatedAt'>[]> {
-        const categories = await this.service.findAll();
-        return categories;
+        return this.service.findAll();
     }
 
     @Get('available')
     async findAllAvailable(): Promise<Omit<Category, 'createdAt' | 'updatedAt'>[]> {
-        const categories = await this.service.findAllAvailable();
-        return categories;
+        return this.service.findAllAvailable();
     }
 
     @Get('slug/:slug')
     async getBySlug(@Param('slug') slug: string): Promise<Omit<Category, 'createdAt' | 'updatedAt'>> {
         const category = await this.service.findBySlug(slug);
-        if (!category) {
-            throw new NotFoundException('Category not found');
-        }
+        if (!category) throw new NotFoundException('Category not found');
         return category;
     }
 
@@ -45,9 +35,7 @@ export class CategoryController {
     @AdminJwtAuth()
     async findOne(@Param('id') id: string): Promise<Omit<Category, 'createdAt' | 'updatedAt'>> {
         const category = await this.service.findById(id);
-        if (!category) {
-            throw new NotFoundException('Category not found');
-        }
+        if (!category) throw new NotFoundException('Category not found');
         return category;
     }
 
@@ -63,13 +51,22 @@ export class CategoryController {
     @HttpCode(HttpStatus.OK)
     async update(
         @Param('id') id: string,
-        @Body() dto: UpdateCategoryDto
+        @Body() dto: UpdateCategoryDto,
     ): Promise<Omit<Category, 'createdAt' | 'updatedAt'>> {
         await this.service.update(id, dto);
-        const updatedCategory = await this.service.findById(id);
-        if (!updatedCategory) {
-            throw new NotFoundException('Category not found after update');
-        }
-        return updatedCategory;
+        const updated = await this.service.findById(id);
+        if (!updated) throw new NotFoundException('Category not found after update');
+        return updated;
+    }
+
+    @Delete(':id')
+    @AdminJwtAuth()
+    @HttpCode(HttpStatus.OK)
+    async remove(@Param('id') id: string): Promise<{ success: boolean; message: string }> {
+        const result = await this.service.delete(id);
+        return {
+            success: true,
+            message: `Категория удалена. Затронуто категорий: ${result.moved}. Объявления перенесены в "Без категории".`,
+        };
     }
 }
