@@ -78,3 +78,7 @@ export async function sendChatMessage(
   });
   return data;
 }
+
+export async function deleteChatMessage(chatId: string, messageId: string): Promise<void> {
+  await api.delete(`/chat/${chatId}/messages/${messageId}`);
+}

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import type { Database } from '../../../database/schema';
 
@@ -39,7 +39,7 @@ export class ChatRepository {
                    p.name as productName, p.preview as productPreview,
                    buyer.firstName as buyerFirstName, buyer.username as buyerUsername, buyer.photoUrl as buyerPhoto,
                    seller.firstName as sellerFirstName, seller.username as sellerUsername, seller.photoUrl as sellerPhoto,
-                   (SELECT body FROM Messages m WHERE m.chatId = c.id ORDER BY m.createdAt DESC LIMIT 1) as lastMessage
+                   (SELECT body FROM Messages m WHERE m.chatId = c.id AND m.deletedAt IS NULL ORDER BY m.createdAt DESC LIMIT 1) as lastMessage
             FROM Chats c
             LEFT JOIN Products p ON p.id = c.productId
             LEFT JOIN Users buyer ON buyer.tgId = c.buyerId
@@ -56,7 +56,7 @@ export class ChatRepository {
                    p.name as productName, p.preview as productPreview,
                    buyer.firstName as buyerFirstName, buyer.username as buyerUsername, buyer.photoUrl as buyerPhoto,
                    seller.firstName as sellerFirstName, seller.username as sellerUsername, seller.photoUrl as sellerPhoto,
-                   (SELECT body FROM Messages m WHERE m.chatId = c.id ORDER BY m.createdAt DESC LIMIT 1) as lastMessage
+                   (SELECT body FROM Messages m WHERE m.chatId = c.id AND m.deletedAt IS NULL ORDER BY m.createdAt DESC LIMIT 1) as lastMessage
             FROM Chats c
             LEFT JOIN Products p ON p.id = c.productId
             LEFT JOIN Users buyer ON buyer.tgId = c.buyerId
@@ -71,11 +71,11 @@ export class ChatRepository {
     return { items: rows, nextCursor };
   }
 
-    async getMessages(chatId: string, cursor?: string, limit = 100) {
+  async getMessages(chatId: string, cursor?: string, limit = 100) {
     const result = await this.db.execute(
       sql`SELECT id, chatId, senderId, body, imageUrl, isRead, createdAt
           FROM Messages
-          WHERE chatId = ${chatId}
+          WHERE chatId = ${chatId} AND deletedAt IS NULL
           ORDER BY createdAt ASC
           LIMIT ${limit}`
     );
@@ -83,7 +83,6 @@ export class ChatRepository {
     return { items: rows, nextCursor: null };
   }
 
-  
   async createMessage(chatId: string, senderId: string, body: string | null, imageUrl: string | null, sellerId: string, buyerId: string) {
     const id = crypto.randomUUID();
     await this.db.execute(
@@ -105,13 +104,28 @@ export class ChatRepository {
     return this.rows(result)[0];
   }
 
+  async deleteMessage(messageId: string, userId: string): Promise<boolean> {
+    const result = await this.db.execute(
+      sql`UPDATE Messages SET deletedAt = NOW()
+          WHERE id = ${messageId} AND senderId = ${userId} AND deletedAt IS NULL`
+    );
+    const affectedRows = (result[0] as any).affectedRows ?? 0;
+    if (affectedRows === 0) throw new ForbiddenException('Cannot delete this message');
+    return true;
+  }
+
+  async purgeOldDeletedMessages(): Promise<void> {
+    await this.db.execute(
+      sql`DELETE FROM Messages WHERE deletedAt IS NOT NULL AND deletedAt < DATE_SUB(NOW(), INTERVAL 30 DAY)`
+    );
+  }
+
   async markRead(chatId: string, userId: string, chat: any) {
     if (chat.buyerId === userId) {
       await this.db.execute(sql`UPDATE Chats SET unreadBuyer = 0 WHERE id = ${chatId}`);
     } else {
       await this.db.execute(sql`UPDATE Chats SET unreadSeller = 0 WHERE id = ${chatId}`);
     }
-    // Mark messages from the other user as read
     await this.db.execute(
       sql`UPDATE Messages SET isRead = true WHERE chatId = ${chatId} AND senderId != ${userId} AND isRead = false`
     );
@@ -136,7 +150,7 @@ export class ChatRepository {
 
   async getMessageCount(chatId: string): Promise<number> {
     const result = await this.db.execute(
-      sql`SELECT COUNT(*) as cnt FROM Messages WHERE chatId = ${chatId}`
+      sql`SELECT COUNT(*) as cnt FROM Messages WHERE chatId = ${chatId} AND deletedAt IS NULL`
     );
     return Number(this.rows(result)[0]?.cnt ?? 0);
   }

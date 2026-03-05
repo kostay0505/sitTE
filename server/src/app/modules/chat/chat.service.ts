@@ -1,17 +1,24 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { ChatRepository } from './chat.repository';
 import { ChatGateway } from './chat.gateway';
 import { forwardRef, Inject } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 
 @Injectable()
-export class ChatService {
+export class ChatService implements OnModuleInit {
   constructor(
     private readonly chatRepository: ChatRepository,
     @Inject(forwardRef(() => ChatGateway))
     private readonly chatGateway: ChatGateway,
     @Inject('DATABASE') private db: any,
   ) {}
+
+  onModuleInit() {
+    // Purge soft-deleted messages older than 30 days — runs every hour
+    setInterval(() => {
+      this.chatRepository.purgeOldDeletedMessages().catch(() => {});
+    }, 60 * 60 * 1000);
+  }
 
   async getOrCreateChat(productId: string, buyerId: string) {
     const result = await this.db.execute(
@@ -58,6 +65,14 @@ export class ChatService {
     return message;
   }
 
+  async deleteMessage(chatId: string, userId: string, messageId: string) {
+    const chat = await this.chatRepository.getChatById(chatId);
+    if (!chat) throw new NotFoundException('Chat not found');
+    if (chat.buyerId !== userId && chat.sellerId !== userId) throw new ForbiddenException('Access denied');
+    await this.chatRepository.deleteMessage(messageId, userId);
+    return { ok: true };
+  }
+
   async markRead(chatId: string, userId: string) {
     const chat = await this.chatRepository.getChatById(chatId);
     if (!chat) throw new NotFoundException('Chat not found');
@@ -75,7 +90,10 @@ export class ChatService {
       const bot = new Bot(token);
       const name = chat.buyerFirstName || chat.buyerUsername || 'Buyer';
       const body = message.body || '[image]';
-      await bot.api.sendMessage(chat.sellerTgId, `New message on "${chat.productName}"\nFrom: ${name}\n\n${body}`);
+      await bot.api.sendMessage(chat.sellerTgId, `New message on "${chat.productName}"
+From: ${name}
+
+${body}`);
     } catch {
       // ignore
     }

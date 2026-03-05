@@ -1,16 +1,18 @@
 'use client';
 import { toImageSrc } from '@/utils/toImageSrc';
+import { useRef, useState } from 'react';
 
 interface MessageBubbleProps {
+  messageId: string;
   body: string | null;
   imageUrl: string | null;
   isMine: boolean;
   isRead: boolean;
   isSending?: boolean;
   createdAt: string;
+  onDelete?: () => void;
 }
 
-// ⏰ Clock — sending
 function ClockIcon() {
   return (
     <svg className="inline w-3 h-3 opacity-60" viewBox="0 0 16 16" fill="currentColor">
@@ -20,7 +22,6 @@ function ClockIcon() {
   );
 }
 
-// ✓ Single check — sent, not read
 function SingleCheckIcon() {
   return (
     <svg className="inline w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
@@ -29,7 +30,6 @@ function SingleCheckIcon() {
   );
 }
 
-// ✓✓ Double check — read
 function DoubleCheckIcon() {
   return (
     <svg className="inline w-5 h-3.5" viewBox="0 0 20 12" fill="currentColor">
@@ -39,55 +39,174 @@ function DoubleCheckIcon() {
   );
 }
 
+function TrashIcon() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd"/>
+    </svg>
+  );
+}
+
 export function MessageBubble({
+  messageId,
   body,
   imageUrl,
   isMine,
   isRead,
   isSending,
   createdAt,
+  onDelete,
 }: MessageBubbleProps) {
   const time = new Date(createdAt).toLocaleTimeString('ru-RU', {
     hour: '2-digit',
     minute: '2-digit',
   });
 
+  const [swiped, setSwiped] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
+    // Only trigger on horizontal swipe left (dx < -60) with minimal vertical movement
+    if (dx < -60 && dy < 40 && onDelete) {
+      setSwiped(true);
+    } else if (dx > 20) {
+      setSwiped(false);
+    }
+  };
+
+  const handleDeleteClick = () => {
+    setSwiped(false);
+    setShowConfirm(true);
+  };
+
+  const handleConfirm = () => {
+    setShowConfirm(false);
+    onDelete?.();
+  };
+
+  const handleCancel = () => {
+    setShowConfirm(false);
+    setSwiped(false);
+  };
+
   return (
-    <div className={`flex ${isMine ? 'justify-end' : 'justify-start'} mb-2`}>
+    <>
+      {/* Confirmation dialog */}
+      {showConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={handleCancel}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl px-6 py-5 mx-4 max-w-xs w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-gray-900 font-medium text-center mb-4">Удалить сообщение?</p>
+            <p className="text-gray-500 text-sm text-center mb-5">
+              Сообщение исчезнет у обоих участников чата.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancel}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm font-medium"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleConfirm}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-medium"
+              >
+                Удалить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div
-        className={`max-w-[75%] rounded-2xl px-4 py-2 ${
-          isMine
-            ? 'bg-green-500 text-white rounded-br-sm'
-            : 'bg-white text-gray-900 rounded-bl-sm shadow-sm'
-        }`}
+        className={`flex ${isMine ? 'justify-end' : 'justify-start'} mb-2`}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       >
-        {imageUrl && (
-          <div className="mb-1">
-            <img
-              src={toImageSrc(imageUrl)}
-              alt="attachment"
-              className="rounded-lg max-w-full max-h-64 object-contain"
-            />
+        {/* Swipe-revealed delete button (mobile, own messages) */}
+        {isMine && onDelete && (
+          <div
+            className={`flex items-center justify-center transition-all duration-200 overflow-hidden ${
+              swiped ? 'w-16 opacity-100' : 'w-0 opacity-0'
+            }`}
+          >
+            <button
+              onClick={handleDeleteClick}
+              className="flex items-center justify-center w-12 h-12 rounded-full bg-red-500 text-white"
+            >
+              <TrashIcon />
+            </button>
           </div>
         )}
-        {body && (
-          <p className="text-sm whitespace-pre-wrap break-words">{body}</p>
-        )}
-        <div className={`flex items-center justify-end gap-1 mt-0.5 ${isMine ? 'text-green-100' : 'text-gray-400'}`}>
-          <span className="text-xs">{time}</span>
-          {isMine && (
-            <span className="flex items-center leading-none">
-              {isSending ? (
-                <ClockIcon />
-              ) : isRead ? (
-                <DoubleCheckIcon />
-              ) : (
-                <SingleCheckIcon />
-              )}
-            </span>
+
+        {/* Bubble */}
+        <div
+          className={`relative max-w-[75%] rounded-2xl px-4 py-2 transition-transform duration-200 ${
+            isMine
+              ? 'bg-green-500 text-white rounded-br-sm'
+              : 'bg-white text-gray-900 rounded-bl-sm shadow-sm'
+          } ${swiped ? '-translate-x-2' : ''}`}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
+          {/* Desktop hover trash icon */}
+          {isMine && onDelete && hovered && !swiped && (
+            <button
+              onClick={handleDeleteClick}
+              className="absolute -left-8 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors"
+              title="Удалить"
+            >
+              <TrashIcon />
+            </button>
           )}
+
+          {imageUrl && (
+            <div className="mb-1">
+              <img
+                src={toImageSrc(imageUrl)}
+                alt="attachment"
+                className="rounded-lg max-w-full max-h-64 object-contain"
+              />
+            </div>
+          )}
+          {body && (
+            <p className="text-sm whitespace-pre-wrap break-words">{body}</p>
+          )}
+          <div
+            className={`flex items-center justify-end gap-1 mt-0.5 ${
+              isMine ? 'text-green-100' : 'text-gray-400'
+            }`}
+          >
+            <span className="text-xs">{time}</span>
+            {isMine && (
+              <span className="flex items-center leading-none">
+                {isSending ? (
+                  <ClockIcon />
+                ) : isRead ? (
+                  <DoubleCheckIcon />
+                ) : (
+                  <SingleCheckIcon />
+                )}
+              </span>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

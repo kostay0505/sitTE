@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useCallback, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getChatMessages, markChatRead, sendChatMessage } from '@/api/chat/methods';
+import { getChatMessages, markChatRead, sendChatMessage, deleteChatMessage } from '@/api/chat/methods';
 import type { Message } from '@/api/chat/methods';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -18,10 +18,8 @@ export function useChat(chatId: string) {
     refetchIntervalInBackground: false,
   });
 
-  // Server returns ASC (oldest first)
   const messages: Message[] = data?.items ?? [];
 
-  // Mark as read when chat is open or new messages arrive
   useEffect(() => {
     if (!isAuthorized || !chatId) return;
     markChatRead(chatId).catch(() => {});
@@ -44,9 +42,19 @@ export function useChat(chatId: string) {
     [isAuthorized, chatId, qc],
   );
 
+  const deleteMessage = useCallback(
+    async (messageId: string) => {
+      if (!isAuthorized) return;
+      await deleteChatMessage(chatId, messageId);
+      await qc.invalidateQueries({ queryKey: ['chatMessages', chatId] });
+    },
+    [isAuthorized, chatId, qc],
+  );
+
   return {
     messages,
     sendMessage,
+    deleteMessage,
     isSending: sendingCount > 0,
     hasMore: false,
     loadMore: () => {},

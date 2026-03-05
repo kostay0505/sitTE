@@ -10,6 +10,7 @@ interface ChatWindowProps {
   currentUserId: string;
   isSending: boolean;
   onSend: (body: string, imageUrl?: string) => void;
+  onDeleteMessage: (messageId: string) => void;
   hasMore: boolean;
   onLoadMore: () => void;
   isFetchingMore: boolean;
@@ -21,6 +22,7 @@ export function ChatWindow({
   currentUserId,
   isSending,
   onSend,
+  onDeleteMessage,
   hasMore,
   onLoadMore,
   isFetchingMore,
@@ -61,12 +63,18 @@ export function ChatWindow({
         {messages.map((msg) => (
           <MessageBubble
             key={msg.id}
+            messageId={msg.id}
             body={msg.body}
             imageUrl={msg.imageUrl}
             isMine={msg.senderId === currentUserId}
             isRead={msg.isRead}
             isSending={false}
             createdAt={msg.createdAt}
+            onDelete={
+              msg.senderId === currentUserId
+                ? () => onDeleteMessage(msg.id)
+                : undefined
+            }
           />
         ))}
         {isSending && (

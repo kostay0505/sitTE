@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
 import { JwtAuth } from '../../decorators/jwt-auth.decorator';
 import { ChatService } from './chat.service';
 
@@ -37,6 +37,16 @@ export class ChatController {
   @JwtAuth()
   getMessages(@Req() req: any, @Param('chatId') chatId: string, @Query('cursor') cursor?: string) {
     return this.chatService.getMessages(chatId, req.user.tgId, cursor);
+  }
+
+  @Delete(':chatId/messages/:messageId')
+  @JwtAuth()
+  deleteMessage(
+    @Req() req: any,
+    @Param('chatId') chatId: string,
+    @Param('messageId') messageId: string,
+  ) {
+    return this.chatService.deleteMessage(chatId, req.user.tgId, messageId);
   }
 
   @Get(':chatId')
