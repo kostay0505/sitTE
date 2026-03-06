@@ -91,9 +91,9 @@ export const Footer: React.FC = memo(() => {
               { label: 'Help center', href: '/help' },
               { label: 'Sell on TEM', href: '/sell-on-tem' },
               { label: 'Catalog', href: ROUTES.CATALOG },
-            ].map(({ label, href, label2 }) => (
-              <a key={href || label} href={href || label} className='text-sm text-gray-300 hover:text-white transition'>
-                {label2 || label}
+            ].map(({ label, href }) => (
+              <a key={href} href={href} className='text-sm text-gray-300 hover:text-white transition'>
+                {label}
               </a>
             ))}
           </div>
