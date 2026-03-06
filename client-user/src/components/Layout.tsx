@@ -38,11 +38,11 @@ export const Layout: React.FC<PropsWithChildren<{ className?: string }>> = ({
 
   return (
     <div
-      className={cn('relative h-full flex flex-col')}
+      className={cn('relative flex flex-col')}
       style={containerStyles}
     >
       <div
-        className={cn('flex-1 overflow-y-auto scrollbar-hide flex flex-col')}
+        className={cn('flex-1 flex flex-col')}
       >
         <PageTransition className={className}>{children}</PageTransition>
         <div

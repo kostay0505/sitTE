@@ -53,8 +53,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
         style={{
           display: 'flex',
           flexDirection: 'column',
-          height: '100vh',
-          overflow: 'hidden',
+          minHeight: '100vh',
         }}
       >
         <Root>
