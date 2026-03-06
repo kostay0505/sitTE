@@ -168,6 +168,21 @@ export default function SellerPage() {
   const { categoryOptions } = useCategoryFilterOptions();
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
 
+  /* ── All products (for category detection) ── */
+  const allProductsQuery = useInfiniteProductsFlat(
+    { sellerId: seller?.tgId ?? id, limit: 200 },
+    { enabled: !!seller },
+  );
+  const availableCategoryIds = useMemo(() => {
+    const ids = new Set<string>();
+    allProductsQuery.items.forEach(p => { if (p.category?.id) ids.add(p.category.id); });
+    return ids;
+  }, [allProductsQuery.items]);
+  const visibleCategories = useMemo(
+    () => categoryOptions.filter(cat => availableCategoryIds.has(cat.value)),
+    [categoryOptions, availableCategoryIds],
+  );
+
   /* ── Products ── */
   const query = useMemo(
     () => ({ sellerId: seller?.tgId ?? id, categoryId: activeCatId ?? undefined, limit: 24 }),
@@ -306,45 +321,46 @@ export default function SellerPage() {
             )}
           </div>
 
-          {/* ── Category tabs + search ──────────────────────── */}
-          <div className='flex items-center gap-4 py-3 border-b border-gray-100'>
-            <div className='flex gap-0 overflow-x-auto scrollbar-hide flex-1'>
-              <button
-                onClick={() => setActiveCatId(null)}
-                className={cn(
-                  'shrink-0 px-4 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap',
-                  activeCatId === null
-                    ? 'border-black text-black'
-                    : 'border-transparent text-gray-500 hover:text-gray-700',
-                )}
-              >
-                Все товары
-              </button>
-              {categoryOptions.map(cat => (
-                <button
-                  key={cat.value}
-                  onClick={() => setActiveCatId(cat.value)}
-                  className={cn(
-                    'shrink-0 px-4 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap',
-                    activeCatId === cat.value
-                      ? 'border-black text-black'
-                      : 'border-transparent text-gray-500 hover:text-gray-700',
-                  )}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-
-            <div className='hidden md:flex items-center border border-gray-300 rounded-full overflow-hidden bg-white hover:border-gray-400 transition shrink-0'>
+          {/* ── Search ──────────────────────────────────────── */}
+          <div className='hidden md:flex py-3 border-b border-gray-100'>
+            <div className='flex items-center border border-gray-300 rounded-full overflow-hidden bg-white hover:border-gray-400 transition'>
               <input
                 type='text'
                 value={searchInput}
                 onChange={e => setSearchInput(e.target.value)}
                 placeholder='Search'
-                className='px-4 py-1.5 text-sm text-black outline-none w-44'
+                className='px-4 py-1.5 text-sm text-black outline-none w-64'
               />
             </div>
+          </div>
+
+          {/* ── Category tabs ────────────────────────────────── */}
+          <div className='flex gap-0 overflow-x-auto scrollbar-hide border-b border-gray-100'>
+            <button
+              onClick={() => setActiveCatId(null)}
+              className={cn(
+                'shrink-0 px-4 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap',
+                activeCatId === null
+                  ? 'border-black text-black'
+                  : 'border-transparent text-gray-500 hover:text-gray-700',
+              )}
+            >
+              Все товары
+            </button>
+            {visibleCategories.map(cat => (
+              <button
+                key={cat.value}
+                onClick={() => setActiveCatId(cat.value)}
+                className={cn(
+                  'shrink-0 px-4 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap',
+                  activeCatId === cat.value
+                    ? 'border-black text-black'
+                    : 'border-transparent text-gray-500 hover:text-gray-700',
+                )}
+              >
+                {cat.label}
+              </button>
+            ))}
           </div>
 
           {/* ── Product grid ────────────────────────────────── */}
