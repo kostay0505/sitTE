@@ -23,10 +23,16 @@ const brandBreakpoints = {
   1024: { slidesPerView: 6, spaceBetween: 16 },
 };
 
+const RAZNOYE_ID = '550e8400-e29b-41d4-a716-446655440001';
+
 export const HomeBrandCarousel: FC<Props> = ({ categories }) => {
+  const filteredCategories = categories.filter(c => c.id !== RAZNOYE_ID);
+
   const [activeCatId, setActiveCatId] = useState<string | undefined>(
-    categories[0]?.id,
+    filteredCategories[0]?.id,
   );
+
+  const activeCategory = filteredCategories.find(c => c.id === activeCatId) ?? filteredCategories[0];
 
   const { data: brands = [], isLoading } = useQuery({
     queryKey: ['homeBrands', activeCatId],
@@ -40,29 +46,38 @@ export const HomeBrandCarousel: FC<Props> = ({ categories }) => {
 
   return (
     <div className='w-full'>
-      {/* Header row */}
-      <div className='flex flex-col md:flex-row md:items-center gap-2 mb-4'>
-        <h2 className='text-xl md:text-2xl font-bold text-black shrink-0'>Featured Brands</h2>
-
-        {categories.length > 0 && (
-          <div className='flex gap-2 flex-wrap md:flex-nowrap overflow-x-auto md:ml-4'>
-            {categories.map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCatId(cat.id)}
-                className={cn(
-                  'px-3 py-1 text-xs md:text-sm rounded-full border whitespace-nowrap transition',
-                  activeCatId === cat.id
-                    ? 'bg-black text-white border-black'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-gray-500',
-                )}
-              >
-                {cat.name}
-              </button>
-            ))}
-          </div>
+      {/* Title row */}
+      <div className='flex items-center justify-between mb-2'>
+        <h2 className='text-2xl md:text-3xl font-bold text-black'>Featured Brands</h2>
+        {activeCategory && (
+          <a
+            href={`${ROUTES.BRANDS}/${activeCategory.id}`}
+            className='text-xs md:text-sm text-primary-green hover:underline whitespace-nowrap shrink-0'
+          >
+            Shop all {activeCategory.name} →
+          </a>
         )}
       </div>
+
+      {/* Category pills row */}
+      {filteredCategories.length > 0 && (
+        <div className='flex gap-2 flex-wrap mb-4'>
+          {filteredCategories.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCatId(cat.id)}
+              className={cn(
+                'px-3 py-1 text-xs md:text-sm rounded-full border whitespace-nowrap transition',
+                (activeCatId ?? filteredCategories[0]?.id) === cat.id
+                  ? 'bg-black text-white border-black'
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-gray-500',
+              )}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className='relative'>
         <Swiper
