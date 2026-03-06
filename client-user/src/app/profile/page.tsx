@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Page } from '@/components/Page';
 import { Layout } from '@/components/Layout';
 import { ProtectedRoute } from '@/components/ProtectedRoute/ProtectedRoute';
@@ -29,12 +29,12 @@ import { ImageWithSkeleton } from '@/components/common/ImageWithSkeleton/ImageWi
 import { cn } from '@/utils/cn';
 
 import { useUserData, useEditUser } from '@/features/users/hooks';
-import { useMyProducts, useDeleteProduct } from '@/features/products/hooks';
+import { useMyProducts, useDeleteProduct, useInfiniteProductsFlat } from '@/features/products/hooks';
 import { toImageSrc } from '@/utils/toImageSrc';
 import { Link } from '@/components/Link/Link';
 import { UserDataResponse } from '@/api/user/types';
 import { TgConfirmModal } from '@/components/Auth/TgConfirmModal';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { clearTokens } from '@/api/auth/tokenStorage';
 import { isTMA } from '@tma.js/bridge';
@@ -43,11 +43,17 @@ import { ProductCard } from '@/components/Catalog/ProductCard';
 import { toast } from 'sonner';
 import { formatPrice } from '@/utils/currency';
 import type { ProductBasic, StatusType } from '@/api/products/types';
+import { PersonalInfoPanel } from './PersonalInfoPanel';
+import { useChatList } from '@/hooks/useChatList';
+import { ChatList } from '@/components/chat/ChatList';
+import { extractTgIdFromToken } from '@/utils/tokenUtils';
+import { getTokens } from '@/api/auth/tokenStorage';
+
+type Panel = 'vitrine' | 'messages' | 'info' | 'favorites';
 
 export default function ProfilePage() {
   const { data: me, status } = useUserData();
   const isLoading = status === 'pending';
-
   const initDataUser = useSignal(initData.user);
 
   const displayName = useMemo(() => {
@@ -64,30 +70,21 @@ export default function ProfilePage() {
     return '@username';
   }, [me?.username, initDataUser?.username]);
 
-  const avatarSrc = useMemo(() => {
-    return toImageSrc(me?.photoUrl ?? initDataUser?.photo_url ?? null);
-  }, [me?.photoUrl, initDataUser?.photo_url]);
+  const avatarSrc = useMemo(
+    () => toImageSrc(me?.photoUrl ?? initDataUser?.photo_url ?? null),
+    [me?.photoUrl, initDataUser?.photo_url],
+  );
 
   const [subscribed, setSubscribed] = useState<boolean>(!!me?.subscribedToNewsletter);
   useEffect(() => {
-    if (typeof me?.subscribedToNewsletter === 'boolean') {
-      setSubscribed(me.subscribedToNewsletter);
-    }
+    if (typeof me?.subscribedToNewsletter === 'boolean') setSubscribed(me.subscribedToNewsletter);
   }, [me?.subscribedToNewsletter]);
 
   const edit = useEditUser();
-
   const onToggleSubscribed = (next: boolean) => {
     setSubscribed(next);
     edit.mutate(
-      {
-        firstName: me?.firstName ?? '',
-        lastName: me?.lastName ?? null,
-        email: me?.email ?? null,
-        phone: me?.phone ?? null,
-        cityId: me?.city?.id ?? null,
-        subscribedToNewsletter: next,
-      },
+      { firstName: me?.firstName ?? '', lastName: me?.lastName ?? null, email: me?.email ?? null, phone: me?.phone ?? null, cityId: me?.city?.id ?? null, subscribedToNewsletter: next },
       { onError: () => setSubscribed(!next) },
     );
   };
@@ -95,8 +92,8 @@ export default function ProfilePage() {
   return (
     <ProtectedRoute>
       <Page back={true}>
-        {/* Desktop layout */}
-        <div className='hidden md:flex md:min-h-screen md:text-black md:pt-[100px]'>
+        {/* Desktop */}
+        <div className='hidden md:flex md:min-h-screen md:pt-[100px] md:text-black'>
           <DesktopLayout
             me={me}
             isLoading={isLoading}
@@ -109,52 +106,28 @@ export default function ProfilePage() {
           />
         </div>
 
-        {/* Mobile layout */}
+        {/* Mobile */}
         <div className='md:hidden'>
           <Layout className='p-2 pt-4 space-y-5 text-black'>
             <div className='flex items-center justify-between gap-4 bg-[#F5F5FA] p-4 rounded-xl'>
               <div className='flex items-center gap-4'>
                 <div className='w-16 h-16 border rounded-lg flex items-center justify-center overflow-hidden'>
-                  {isLoading ? (
-                    <Skeleton width={'100%'} height={'100%'} />
-                  ) : avatarSrc ? (
-                    <ImageWithSkeleton
-                      src={avatarSrc}
-                      containerClassName='w-16 h-16'
-                      className='!rounded-none object-cover'
-                      alt='avatar'
-                      isLoading={isLoading}
-                    />
-                  ) : (
-                    <UserIcon className='w-10 h-10 text-gray-500' />
-                  )}
+                  {isLoading ? <Skeleton width={'100%'} height={'100%'} /> : avatarSrc ? (
+                    <ImageWithSkeleton src={avatarSrc} containerClassName='w-16 h-16' className='!rounded-none object-cover' alt='avatar' isLoading={isLoading} />
+                  ) : <UserIcon className='w-10 h-10 text-gray-500' />}
                 </div>
                 <div className='space-y-1'>
-                  {isLoading ? (
-                    <>
-                      <Skeleton height={28} />
-                      <Skeleton height={24} />
-                    </>
-                  ) : (
-                    <>
-                      <div className='font-medium text-lg'>{displayName}</div>
-                      <div className='text-gray-500'>{displayHandle}</div>
-                    </>
+                  {isLoading ? (<><Skeleton height={28} /><Skeleton height={24} /></>) : (
+                    <><div className='font-medium text-lg'>{displayName}</div><div className='text-gray-500'>{displayHandle}</div></>
                   )}
                 </div>
               </div>
               {!isTMA() && <LogoutButton />}
             </div>
-
             <MobileMenu user={me} />
-
             <div className='flex items-center justify-between border-t pt-4 mt-4'>
               <span className='text-sm font-medium'>Получать рассылку</span>
-              <Switch
-                checked={subscribed}
-                onCheckedChange={onToggleSubscribed}
-                disabled={isLoading || edit.isPending}
-              />
+              <Switch checked={subscribed} onCheckedChange={onToggleSubscribed} disabled={isLoading || edit.isPending} />
             </div>
           </Layout>
         </div>
@@ -164,18 +137,11 @@ export default function ProfilePage() {
 }
 
 // ─────────────────────────────────────────────
-// Desktop layout: sidebar + main content
+// Desktop layout
 // ─────────────────────────────────────────────
 
 function DesktopLayout({
-  me,
-  isLoading,
-  displayName,
-  displayHandle,
-  avatarSrc,
-  subscribed,
-  onToggleSubscribed,
-  editPending,
+  me, isLoading, displayName, displayHandle, avatarSrc, subscribed, onToggleSubscribed, editPending,
 }: {
   me: UserDataResponse | undefined;
   isLoading: boolean;
@@ -186,12 +152,14 @@ function DesktopLayout({
   onToggleSubscribed: (v: boolean) => void;
   editPending: boolean;
 }) {
-  const pathname = usePathname();
+  const [activePanel, setActivePanel] = useState<Panel>('vitrine');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [jobOpen, setJobOpen] = useState(false);
+  const [tgConfirmOpen, setTgConfirmOpen] = useState(false);
+
   const router = useRouter();
   const setAuthorized = useAuthStore(s => s.setAuthorized);
   const queryClient = useQueryClient();
-  const [tgConfirmOpen, setTgConfirmOpen] = useState(false);
-  const [jobOpen, setJobOpen] = useState(false);
 
   const handleLogout = () => {
     setAuthorized(false);
@@ -200,35 +168,11 @@ function DesktopLayout({
     router.replace(ROUTES.HOME);
   };
 
-  const navItems = [
-    {
-      icon: <LayoutDashboard className='w-4 h-4' />,
-      label: 'Витрина',
-      href: ROUTES.PROFILE,
-    },
-    {
-      icon: <MessageSquare className='w-4 h-4' />,
-      label: 'Сообщения',
-      href: '/chats',
-    },
-    {
-      icon: <FileText className='w-4 h-4' />,
-      label: 'Личная инфо',
-      href: `${ROUTES.PROFILE}/info`,
-    },
-    {
-      icon: <PlusSquare className='w-4 h-4' />,
-      label: 'Создать',
-      href: ROUTES.CREATE_ADVERTISEMENT,
-    },
-  ];
-
-  const bottomItems = [
-    {
-      icon: <Heart className='w-4 h-4' />,
-      label: 'Избранное',
-      href: ROUTES.FAVORITES,
-    },
+  const navMain = [
+    { id: 'vitrine' as Panel, icon: <LayoutDashboard className='w-4 h-4' />, label: 'Витрина' },
+    { id: 'messages' as Panel, icon: <MessageSquare className='w-4 h-4' />, label: 'Сообщения' },
+    { id: 'info' as Panel, icon: <FileText className='w-4 h-4' />, label: 'Личная инфо' },
+    { id: 'favorites' as Panel, icon: <Heart className='w-4 h-4' />, label: 'Избранное' },
   ];
 
   return (
@@ -236,48 +180,43 @@ function DesktopLayout({
       {/* Sidebar */}
       <aside className='w-44 flex-shrink-0 p-3 pt-4'>
         <div className='bg-white rounded-2xl shadow-sm p-3 space-y-0.5'>
-          {navItems.map(item => (
-            <Link
-              key={item.href}
-              href={item.href}
+          {/* Main nav */}
+          {navMain.map(item => (
+            <button
+              key={item.id}
+              onClick={() => setActivePanel(item.id)}
               className={cn(
-                'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition',
-                pathname === item.href
+                'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition text-left',
+                activePanel === item.id
                   ? 'bg-gray-900 text-white font-semibold'
                   : 'text-gray-700 hover:bg-gray-100',
               )}
             >
               {item.icon}
               {item.label}
-            </Link>
+            </button>
           ))}
+
+          {/* Создать — navigates */}
+          <Link
+            href={ROUTES.CREATE_ADVERTISEMENT}
+            className='w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition'
+          >
+            <PlusSquare className='w-4 h-4' />
+            Создать
+          </Link>
 
           {/* Работа accordion */}
           <button
             onClick={() => setJobOpen(p => !p)}
             className='w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition'
           >
-            <span className='flex items-center gap-2.5'>
-              <Briefcase className='w-4 h-4' />
-              Работа
-            </span>
-            <ChevronDown
-              className={cn(
-                'w-3 h-3 text-gray-400 transition-transform flex-shrink-0',
-                jobOpen && 'rotate-180',
-              )}
-            />
+            <span className='flex items-center gap-2.5'><Briefcase className='w-4 h-4' />Работа</span>
+            <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform flex-shrink-0', jobOpen && 'rotate-180')} />
           </button>
-
           <AnimatePresence>
             {jobOpen && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className='overflow-hidden'
-              >
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className='overflow-hidden'>
                 <div className='pl-2 space-y-0.5'>
                   {[
                     { label: 'Мои вакансии', href: ROUTES.MY_VACANCY },
@@ -285,13 +224,8 @@ function DesktopLayout({
                     { label: 'Мои резюме', href: ROUTES.MY_RESUME },
                     { label: 'Создать резюме', href: ROUTES.CREATE_RESUME },
                   ].map(sub => (
-                    <Link
-                      key={sub.href}
-                      href={sub.href}
-                      className='flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-gray-100 transition'
-                    >
-                      <Pencil className='w-3 h-3' />
-                      {sub.label}
+                    <Link key={sub.href} href={sub.href} className='flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-gray-100 transition'>
+                      <Pencil className='w-3 h-3' />{sub.label}
                     </Link>
                   ))}
                 </div>
@@ -299,29 +233,36 @@ function DesktopLayout({
             )}
           </AnimatePresence>
 
-          {/* Separator */}
           <div className='h-px bg-gray-100 my-1' />
 
-          {bottomItems.map(item => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className='flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition'
-            >
-              {item.icon}
-              {item.label}
-            </Link>
-          ))}
-
-          {!me?.username && (
-            <button
-              onClick={() => setTgConfirmOpen(true)}
-              className='w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition'
-            >
-              <TgIcon2 className='w-4 h-4' />
-              Привязать ТГ
-            </button>
-          )}
+          {/* Настройки accordion */}
+          <button
+            onClick={() => setSettingsOpen(p => !p)}
+            className='w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition'
+          >
+            <span className='flex items-center gap-2.5'><Settings className='w-4 h-4' />Настройки</span>
+            <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform flex-shrink-0', settingsOpen && 'rotate-180')} />
+          </button>
+          <AnimatePresence>
+            {settingsOpen && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className='overflow-hidden'>
+                <div className='pl-2 space-y-0.5'>
+                  <div className='flex items-center justify-between px-3 py-1.5 text-xs text-gray-600'>
+                    <span>Рассылка</span>
+                    <Switch checked={subscribed} onCheckedChange={onToggleSubscribed} disabled={editPending} />
+                  </div>
+                  {!me?.username && (
+                    <button
+                      onClick={() => setTgConfirmOpen(true)}
+                      className='w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-gray-100 transition'
+                    >
+                      <TgIcon2 className='w-3 h-3' />Привязать ТГ
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div className='h-px bg-gray-100 my-1' />
 
@@ -330,55 +271,46 @@ function DesktopLayout({
               onClick={handleLogout}
               className='w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition'
             >
-              <LogOut className='w-4 h-4' />
-              Выйти
+              <LogOut className='w-4 h-4' />Выйти
             </button>
           )}
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className='flex-1 flex flex-col min-w-0 p-4 pt-4'>
-        <Vitrine subscribed={subscribed} onToggleSubscribed={onToggleSubscribed} editPending={editPending} />
+      {/* Main panel */}
+      <main className='flex-1 min-w-0 p-6'>
+        {activePanel === 'vitrine' && <VitrinePanel subscribed={subscribed} onToggleSubscribed={onToggleSubscribed} editPending={editPending} />}
+        {activePanel === 'messages' && <MessagesPanel />}
+        {activePanel === 'info' && <PersonalInfoPanel />}
+        {activePanel === 'favorites' && <FavoritesPanel />}
       </main>
 
-      <TgConfirmModal
-        open={tgConfirmOpen}
-        onClose={() => setTgConfirmOpen(false)}
-        value={me?.url ?? ''}
-      />
+      <TgConfirmModal open={tgConfirmOpen} onClose={() => setTgConfirmOpen(false)} value={me?.url ?? ''} />
     </div>
   );
 }
 
 // ─────────────────────────────────────────────
-// Витрина объявлений
+// Panel: Витрина
 // ─────────────────────────────────────────────
 
-function Vitrine({
-  subscribed,
-  onToggleSubscribed,
-  editPending,
-}: {
-  subscribed: boolean;
-  onToggleSubscribed: (v: boolean) => void;
-  editPending: boolean;
+function VitrinePanel({ subscribed, onToggleSubscribed, editPending }: {
+  subscribed: boolean; onToggleSubscribed: (v: boolean) => void; editPending: boolean;
 }) {
-  const { data: products, status: productsStatus } = useMyProducts();
+  const { data: products, status } = useMyProducts();
   const del = useDeleteProduct();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusType | 'all'>('all');
 
-  const isProductsLoading = productsStatus === 'pending';
   const allItems = products ?? [];
-
-  const filtered = useMemo(() => {
-    return allItems.filter(p => {
+  const filtered = useMemo(() =>
+    allItems.filter(p => {
       const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
       return matchesSearch && matchesStatus;
-    });
-  }, [allItems, search, statusFilter]);
+    }),
+    [allItems, search, statusFilter],
+  );
 
   const handleDelete = (id: string) => {
     if (!id || !confirm('Удалить объявление?')) return;
@@ -390,23 +322,16 @@ function Vitrine({
 
   const handlePosting = (product: ProductBasic) => {
     const message = `${product.name}\n\n${product.description}\n\n${formatPrice(product.priceCash, product.currency)}\n\n${product.url}`;
-    window.open(
-      `https://t.me/share/url?url=${encodeURIComponent(product.url || '')}&text=${encodeURIComponent(message)}`,
-      '_blank',
-      'noopener,noreferrer',
-    );
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(product.url || '')}&text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
   };
 
   const statusLabels: Record<StatusType | 'all', string> = {
-    all: 'Все',
-    approved: 'Активные',
-    moderation: 'На модерации',
-    rejected: 'Отклонённые',
+    all: 'Все', approved: 'Активные', moderation: 'На модерации', rejected: 'Отклонённые',
   };
 
   return (
     <>
-      {/* Search bar */}
+      {/* Search */}
       <div className='flex items-center gap-3 mb-4'>
         <div className='relative flex-1 max-w-lg mx-auto'>
           <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400' />
@@ -420,7 +345,7 @@ function Vitrine({
         </div>
       </div>
 
-      {/* Status filters */}
+      {/* Filters */}
       <div className='flex items-center gap-2 mb-4'>
         {(Object.keys(statusLabels) as (StatusType | 'all')[]).map(s => (
           <button
@@ -428,42 +353,31 @@ function Vitrine({
             onClick={() => setStatusFilter(s)}
             className={cn(
               'px-3 py-1 text-xs rounded-full border transition',
-              statusFilter === s
-                ? 'bg-gray-900 text-white border-gray-900'
-                : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400',
+              statusFilter === s ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400',
             )}
           >
             {statusLabels[s]}
           </button>
         ))}
-
         <div className='ml-auto flex items-center gap-2 text-xs text-gray-500'>
           <span>Рассылка</span>
-          <Switch
-            checked={subscribed}
-            onCheckedChange={onToggleSubscribed}
-            disabled={editPending}
-          />
+          <Switch checked={subscribed} onCheckedChange={onToggleSubscribed} disabled={editPending} />
         </div>
       </div>
 
       {/* Grid */}
-      {isProductsLoading && (
+      {status === 'pending' && (
         <div className='grid grid-cols-4 gap-4'>
-          {Array.from({ length: 8 }).map((_, i) => (
-            <ProductCard key={i} isLoading />
-          ))}
+          {Array.from({ length: 8 }).map((_, i) => <ProductCard key={i} isLoading />)}
         </div>
       )}
-
-      {!isProductsLoading && filtered.length === 0 && (
+      {status !== 'pending' && filtered.length === 0 && (
         <div className='flex flex-col items-center justify-center py-24 text-gray-400'>
           <div className='text-4xl mb-3'>📦</div>
           <div>{allItems.length === 0 ? 'Объявлений пока нет' : 'Ничего не найдено'}</div>
         </div>
       )}
-
-      {!isProductsLoading && filtered.length > 0 && (
+      {status !== 'pending' && filtered.length > 0 && (
         <div className='grid grid-cols-4 gap-4'>
           {filtered.map(product => (
             <ProductCard
@@ -485,6 +399,70 @@ function Vitrine({
 }
 
 // ─────────────────────────────────────────────
+// Panel: Сообщения
+// ─────────────────────────────────────────────
+
+function MessagesPanel() {
+  const { chats, isLoading } = useChatList();
+  const [currentUserId, setCurrentUserId] = useState('');
+
+  useEffect(() => {
+    const tokens = getTokens();
+    if (tokens?.accessToken) {
+      const tgId = extractTgIdFromToken(tokens.accessToken);
+      if (tgId) setCurrentUserId(tgId);
+    }
+  }, []);
+
+  return (
+    <div className='max-w-2xl'>
+      <h2 className='text-lg font-semibold mb-4'>Сообщения</h2>
+      {isLoading ? (
+        <div className='flex justify-center py-16'>
+          <div className='w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin' />
+        </div>
+      ) : (
+        <div className='bg-white rounded-2xl shadow-sm overflow-hidden'>
+          <ChatList chats={chats} currentUserId={currentUserId} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Panel: Избранное
+// ─────────────────────────────────────────────
+
+function FavoritesPanel() {
+  const { items, status } = useInfiniteProductsFlat({ isFavorite: true });
+
+  return (
+    <>
+      <h2 className='text-lg font-semibold mb-4'>Избранное</h2>
+      {status === 'pending' && (
+        <div className='grid grid-cols-4 gap-4'>
+          {Array.from({ length: 8 }).map((_, i) => <ProductCard key={i} isLoading />)}
+        </div>
+      )}
+      {status !== 'pending' && items.length === 0 && (
+        <div className='flex flex-col items-center justify-center py-24 text-gray-400'>
+          <Heart className='w-12 h-12 mb-3 opacity-30' />
+          <div>Избранных товаров пока нет</div>
+        </div>
+      )}
+      {status !== 'pending' && items.length > 0 && (
+        <div className='grid grid-cols-4 gap-4'>
+          {items.map(product => (
+            <ProductCard key={product.id} product={product} href={`${ROUTES.CATALOG}/${product.id}`} />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Mobile menu (unchanged)
 // ─────────────────────────────────────────────
 
@@ -493,51 +471,19 @@ function MobileMenu({ user }: { user: UserDataResponse | undefined }) {
   const [tgConfirmOpen, setTgConfirmOpen] = useState(false);
   return (
     <div className='space-y-2'>
-      <ProfileItem
-        icon={<ClipboardList className='w-5 h-5' />}
-        label='Личная информация'
-        href={`${ROUTES.PROFILE}/info`}
-      />
-      <ProfileItem
-        icon={<Heart className='w-5 h-5 fill-black' />}
-        label='Избранное'
-        href={ROUTES.FAVORITES}
-      />
-      <ProfileItem
-        icon={<ClipboardList className='w-5 h-5' />}
-        label='Мои объявления'
-        href={ROUTES.MY_ADVERTISEMENTS}
-      />
-      <ProfileItem
-        icon={<PlusSquare className='w-5 h-5' />}
-        label='Создать объявление'
-        href={ROUTES.CREATE_ADVERTISEMENT}
-      />
-
+      <ProfileItem icon={<ClipboardList className='w-5 h-5' />} label='Личная информация' href={`${ROUTES.PROFILE}/info`} />
+      <ProfileItem icon={<Heart className='w-5 h-5 fill-black' />} label='Избранное' href={ROUTES.FAVORITES} />
+      <ProfileItem icon={<ClipboardList className='w-5 h-5' />} label='Мои объявления' href={ROUTES.MY_ADVERTISEMENTS} />
+      <ProfileItem icon={<PlusSquare className='w-5 h-5' />} label='Создать объявление' href={ROUTES.CREATE_ADVERTISEMENT} />
       <ProfileItem
         icon={<Briefcase className='w-5 h-5' />}
         label='Работа'
         onClick={() => setJobOpen(prev => !prev)}
-        rightIcon={
-          <motion.div
-            animate={{ rotate: jobOpen ? 180 : 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <ChevronDown className='w-4 h-4 text-gray-500' />
-          </motion.div>
-        }
+        rightIcon={<motion.div animate={{ rotate: jobOpen ? 180 : 0 }} transition={{ duration: 0.2 }}><ChevronDown className='w-4 h-4 text-gray-500' /></motion.div>}
       />
-
       <AnimatePresence>
         {jobOpen && (
-          <motion.div
-            key='job-section'
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className='overflow-hidden'
-          >
+          <motion.div key='job-section' initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className='overflow-hidden'>
             <div className='relative bg-white rounded-xl grid grid-cols-2 gap-4'>
               <div className='absolute top-0 bottom-0 left-1/2 w-px bg-gray-200 z-0' />
               <div className='z-10 flex flex-col gap-4 p-4'>
@@ -552,79 +498,36 @@ function MobileMenu({ user }: { user: UserDataResponse | undefined }) {
           </motion.div>
         )}
       </AnimatePresence>
-
       {!user?.username && (
-        <ProfileItem
-          icon={<TgIcon2 className='w-5 h-5' />}
-          label='Привязать телеграм'
-          onClick={() => setTgConfirmOpen(true)}
-        />
+        <ProfileItem icon={<TgIcon2 className='w-5 h-5' />} label='Привязать телеграм' onClick={() => setTgConfirmOpen(true)} />
       )}
-
-      <TgConfirmModal
-        open={tgConfirmOpen}
-        onClose={() => setTgConfirmOpen(false)}
-        value={user?.url ?? ''}
-      />
+      <TgConfirmModal open={tgConfirmOpen} onClose={() => setTgConfirmOpen(false)} value={user?.url ?? ''} />
     </div>
   );
 }
 
-function ProfileItem({
-  icon, label, onClick, href, rightIcon, disabled,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick?: () => void;
-  href?: string;
-  rightIcon?: React.ReactNode;
-  disabled?: boolean;
+function ProfileItem({ icon, label, onClick, href, rightIcon, disabled }: {
+  icon: React.ReactNode; label: string; onClick?: () => void; href?: string; rightIcon?: React.ReactNode; disabled?: boolean;
 }) {
   return href ? (
-    <Link
-      href={disabled ? '' : href}
-      onClick={onClick}
-      className='w-full bg-white rounded-xl p-2 flex items-center justify-between text-left text-base'
-    >
-      <div className='flex items-center gap-3'>
-        <span className='text-gray-800'>{icon}</span>
-        <span>{label}</span>
-      </div>
+    <Link href={disabled ? '' : href} onClick={onClick} className='w-full bg-white rounded-xl p-2 flex items-center justify-between text-left text-base'>
+      <div className='flex items-center gap-3'><span className='text-gray-800'>{icon}</span><span>{label}</span></div>
       {rightIcon}
     </Link>
   ) : (
-    <button
-      onClick={onClick}
-      className='w-full bg-white rounded-xl p-2 flex items-center justify-between text-left text-base cursor-pointer'
-    >
-      <div className='flex items-center gap-3'>
-        <span className='text-gray-800'>{icon}</span>
-        <span>{label}</span>
-      </div>
+    <button onClick={onClick} className='w-full bg-white rounded-xl p-2 flex items-center justify-between text-left text-base cursor-pointer'>
+      <div className='flex items-center gap-3'><span className='text-gray-800'>{icon}</span><span>{label}</span></div>
       {rightIcon}
     </button>
   );
 }
 
-function SubItem({
-  icon, label, href, onClick, disabled,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  href: string;
-  onClick?: () => void;
-  disabled?: boolean;
+function SubItem({ icon, label, href, onClick, disabled }: {
+  icon: React.ReactNode; label: string; href: string; onClick?: () => void; disabled?: boolean;
 }) {
   return (
-    <Link
-      href={disabled ? '' : href}
-      onClick={onClick}
-      className='flex flex-col items-start justify-center gap-1 text-sm text-black'
-    >
-      <div className='flex items-center gap-2'>
-        {icon}
-        <span className='text-left'>{label}</span>
-      </div>
+    <Link href={disabled ? '' : href} onClick={onClick} className='flex flex-col items-start justify-center gap-1 text-sm text-black'>
+      <div className='flex items-center gap-2'>{icon}<span className='text-left'>{label}</span></div>
     </Link>
   );
 }
@@ -633,19 +536,9 @@ function LogoutButton() {
   const router = useRouter();
   const setAuthorized = useAuthStore(s => s.setAuthorized);
   const queryClient = useQueryClient();
-
-  const handleLogout = () => {
-    setAuthorized(false);
-    clearTokens();
-    queryClient.clear();
-    router.replace(ROUTES.HOME);
-  };
-
+  const handleLogout = () => { setAuthorized(false); clearTokens(); queryClient.clear(); router.replace(ROUTES.HOME); };
   return (
-    <button
-      onClick={handleLogout}
-      className='flex items-center gap-2 px-3 py-2 rounded-lg text-white bg-red-500 hover:bg-red-600 transition-colors cursor-pointer'
-    >
+    <button onClick={handleLogout} className='flex items-center gap-2 px-3 py-2 rounded-lg text-white bg-red-500 hover:bg-red-600 transition-colors cursor-pointer'>
       <span className='text-sm font-medium'>Выйти</span>
     </button>
   );
