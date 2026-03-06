@@ -23,49 +23,48 @@ export const ProductImageGallery: React.FC<Props> = ({
 
   const visibleFiles = mediaFiles.slice(0, 6);
 
-  // Always render 6 cells; empty ones are grey placeholders
-  const cells: ({ url: string; type: 'image' | 'video' } | null)[] = [
-    ...visibleFiles,
-    ...Array<null>(Math.max(0, 6 - visibleFiles.length)).fill(null),
-  ];
-
   const handleClick = (i: number) => {
-    if (!mediaFiles[i]) return;
     setModalIndex(i);
     setModalOpen(true);
   };
 
+  // Loading skeleton: 6 grey cells
+  if (isLoading) {
+    return (
+      <div className={cn('grid grid-cols-2 gap-[2px]', className)}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className='aspect-square bg-gray-200 relative overflow-hidden'>
+            <Skeleton width='100%' height='100%' className='absolute inset-0' />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className={cn('grid grid-cols-2 gap-[2px]', className)}>
-      {cells.map((media, i) => (
+      {visibleFiles.map((media, i) => (
         <div
           key={i}
-          className={cn(
-            'aspect-square bg-gray-200 overflow-hidden relative',
-            media && !isLoading && 'cursor-pointer hover:opacity-90 transition-opacity',
-          )}
+          className='aspect-square bg-gray-200 overflow-hidden relative cursor-pointer hover:opacity-90 transition-opacity'
           onClick={() => handleClick(i)}
         >
-          {isLoading ? (
-            <Skeleton width='100%' height='100%' className='absolute inset-0' />
-          ) : media ? (
-            media.type === 'video' ? (
-              <video
-                src={media.url}
-                className='w-full h-full object-cover'
-                muted
-                preload='metadata'
-              />
-            ) : (
-              <ImageWithSkeleton
-                src={media.url}
-                alt={`Photo ${i + 1}`}
-                fill
-                containerClassName='w-full h-full'
-                className='object-cover'
-              />
-            )
-          ) : null}
+          {media.type === 'video' ? (
+            <video
+              src={media.url}
+              className='w-full h-full object-cover'
+              muted
+              preload='metadata'
+            />
+          ) : (
+            <ImageWithSkeleton
+              src={media.url}
+              alt={`Photo ${i + 1}`}
+              fill
+              containerClassName='w-full h-full'
+              className='object-cover'
+            />
+          )}
         </div>
       ))}
 

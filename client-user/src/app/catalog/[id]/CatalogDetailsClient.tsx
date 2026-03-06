@@ -7,7 +7,9 @@ import { Layout } from '@/components/Layout';
 import { ProductImageGallery } from '@/components/Product/ProductImageGallery';
 import { ProductHeader } from '@/components/Product/ProductHeader';
 import { ProductDetailCarousel } from '@/components/Product/ProductDetailCarousel';
-import { useProduct, useInfiniteProductsFlat } from '@/features/products/hooks';
+import { useProduct } from '@/features/products/hooks';
+import { useQuery } from '@tanstack/react-query';
+import { getAvailableProducts } from '@/api/products/methods';
 import { markProductViewed } from '@/api/products/methods';
 import type { Product } from '@/api/products/types';
 import { toImageSrc } from '@/utils/toImageSrc';
@@ -91,10 +93,12 @@ export function CatalogDetailsClient() {
   }, [product?.id]);
 
   // Fetch seller products for count
-  const { items: sellerProducts, isFetching: sellerFetching } = useInfiniteProductsFlat(
-    { sellerId: sellerTgId ?? '', limit: 100 },
-    { enabled: !!sellerTgId && !!product },
-  );
+  const { data: sellerProducts = [] } = useQuery({
+    queryKey: ['seller-count', sellerTgId],
+    queryFn: () => getAvailableProducts({ sellerId: sellerTgId!, limit: 200 }),
+    enabled: !!sellerTgId && !isLoading,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const handleOpenChat = async () => {
     if (!product?.id) return;
@@ -203,13 +207,9 @@ export function CatalogDetailsClient() {
                 {!isLoading && sellerTgId && (
                   <Link
                     href={`${ROUTES.SALLER}/${sellerTgId}`}
-                    className='text-xs text-black hover:underline whitespace-nowrap shrink-0'
+                    className='text-xs font-medium text-black border border-black rounded px-3 py-1 hover:bg-black hover:text-white transition whitespace-nowrap shrink-0'
                   >
-                    Shop all{' '}
-                    {!sellerFetching && sellerProducts.length > 0
-                      ? `${sellerProducts.length} products`
-                      : 'products'}{' '}
-                    →
+                    Shop all{sellerProducts.length > 0 ? ` ${sellerProducts.length}` : ''} products
                   </Link>
                 )}
               </div>
