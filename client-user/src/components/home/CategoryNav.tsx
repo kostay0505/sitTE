@@ -17,7 +17,7 @@ export const CategoryNav: FC = () => {
 
   if (isLoading) {
     return (
-      <div className='hidden md:flex py-2 border-b border-gray-200' style={{ paddingLeft: 422, paddingRight: 422 }}>
+      <div className='hidden md:flex flex-wrap justify-center py-2 border-b border-gray-200 gap-y-2' style={{ paddingLeft: 422, paddingRight: 422 }}>
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className='h-4 w-20 bg-gray-200 rounded animate-pulse shrink-0 mr-[30px]' />
         ))}
@@ -29,7 +29,7 @@ export const CategoryNav: FC = () => {
 
   return (
     <div
-      className='hidden md:flex py-2 overflow-x-auto border-b border-gray-200'
+      className='hidden md:flex flex-wrap justify-center py-2 border-b border-gray-200 gap-y-2'
       style={{ paddingLeft: 422, paddingRight: 422 }}
     >
       {roots.map((cat, i) => (
@@ -41,7 +41,7 @@ export const CategoryNav: FC = () => {
               : `${ROUTES.CATALOG}?category=${cat.id}`
           }
           className={cn(
-            'text-xs text-gray-700 hover:text-black whitespace-nowrap transition shrink-0',
+            'text-xs text-gray-700 hover:text-black whitespace-nowrap transition',
             i < roots.length - 1 && 'mr-[30px]',
           )}
         >
