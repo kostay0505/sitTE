@@ -62,20 +62,23 @@ function DesktopHeader() {
   };
 
   return (
-    <div className='flex items-center h-[72px] px-6 gap-4 bg-white border-b border-gray-100 max-w-[1400px] mx-auto w-full'>
-      {/* Logo */}
+    <div className='flex items-center h-[88px] w-full pl-6 pr-6 bg-white border-b border-gray-100'>
+      {/* Logo — close to left edge, 2× size */}
       <button
         onClick={() => router.push(ROUTES.HOME)}
         className='shrink-0 flex items-center'
         aria-label='Home'
       >
-        <LogoIcon className='h-10 w-auto' />
+        <LogoIcon className='h-20 w-auto' />
       </button>
 
-      {/* Search */}
+      {/* 50px gap between logo and search */}
+      <div className='w-[50px] shrink-0' />
+
+      {/* Search — fills remaining space */}
       <form
         onSubmit={handleSearch}
-        className='flex-1 max-w-[480px] flex items-center border border-gray-300 rounded-full overflow-hidden bg-white hover:border-gray-400 transition'
+        className='flex-1 flex items-center border border-gray-300 rounded-full overflow-hidden bg-white hover:border-gray-400 transition'
       >
         <input
           type='text'
@@ -93,31 +96,28 @@ function DesktopHeader() {
         </button>
       </form>
 
-      {/* Right nav */}
-      <div className='ml-auto flex items-center gap-2'>
-        <button className='flex items-center gap-1 text-sm text-gray-600 hover:text-black px-2 py-1 rounded transition'>
+      {/* 50px gap between search and nav */}
+      <div className='w-[50px] shrink-0' />
+
+      {/* Right nav — 40px between all items */}
+      <div className='flex items-center gap-[40px] shrink-0'>
+        <button className='flex items-center gap-1 text-sm text-gray-600 hover:text-black transition'>
           <Globe className='w-4 h-4' />
           <span>RU</span>
         </button>
 
-        <a
-          href='/sell-on-tem'
-          className='text-sm text-gray-700 hover:text-black px-2 py-1 rounded transition whitespace-nowrap'
-        >
+        <a href='/sell-on-tem' className='text-sm text-gray-700 hover:text-black transition whitespace-nowrap'>
           Sell on TEM
         </a>
 
-        <a
-          href='/blog'
-          className='text-sm text-gray-700 hover:text-black px-2 py-1 rounded transition'
-        >
+        <a href='/blog' className='text-sm text-gray-700 hover:text-black transition'>
           Blog
         </a>
 
         {isAuthorized ? (
           <button
             onClick={() => router.push(ROUTES.PROFILE)}
-            className='flex items-center gap-1 text-sm text-gray-700 hover:text-black px-3 py-1.5 rounded-full border border-gray-300 hover:border-gray-500 transition'
+            className='flex items-center gap-1 text-sm text-gray-700 hover:text-black transition'
           >
             <UserRound className='w-4 h-4' />
             <span>Профиль</span>
