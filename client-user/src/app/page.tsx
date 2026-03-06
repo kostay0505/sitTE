@@ -1,15 +1,17 @@
 'use client';
 
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Layout } from '@/components/Layout';
 import { Page } from '@/components/Page';
 import { HomeBanner } from '@/components/home/HomeBanner';
 import { HomeProductCarousel } from '@/components/home/HomeProductCarousel';
 import { HomeBrandCarousel } from '@/components/home/HomeBrandCarousel';
 import { CategoryNav } from '@/components/home/CategoryNav';
+import { Footer } from '@/components/Footer';
 import { getHomeCategories, getTouringExpertProducts, getBestsellers } from '@/api/home/methods';
 import { getSiteContentAll } from '@/api/site-content/methods';
 import type { BannerContent } from '@/api/site-content/types';
+import { useWindowResize } from '@/hooks/useWindowResize';
 
 function parseBanner(raw: any): BannerContent | null {
   if (!raw) return null;
@@ -23,10 +25,18 @@ function parseBanner(raw: any): BannerContent | null {
   return null;
 }
 
-function FullWidthWrapper({ children }: { children: React.ReactNode }) {
+const DESKTOP_HEADER_HEIGHT = 116;
+
+function HomeScrollContainer({ children }: { children: React.ReactNode }) {
+  const { width } = useWindowResize();
+  const isMobile = width > 0 && width < 768;
+  const paddingTop = isMobile ? 0 : DESKTOP_HEADER_HEIGHT;
+
   return (
-    <div style={{ width: '100vw', marginLeft: 'calc(-50vw + 50%)' }}>
-      {children}
+    <div className='relative h-full flex flex-col' style={{ paddingTop }}>
+      <div className='flex-1 overflow-y-auto scrollbar-hide'>
+        {children}
+      </div>
     </div>
   );
 }
@@ -44,27 +54,21 @@ export default function Home() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const banner1 = parseBanner(siteContent.banner1);
-  const banner2 = parseBanner(siteContent.banner2);
-  const banner3 = parseBanner(siteContent.banner3);
+  const banner1 = parseBanner((siteContent as any).banner1);
+  const banner2 = parseBanner((siteContent as any).banner2);
+  const banner3 = parseBanner((siteContent as any).banner3);
 
   return (
     <Page back={false}>
-      <Layout className='flex flex-col gap-8 pb-8'>
-        {/* Category nav (desktop only, right under header) */}
-        <FullWidthWrapper>
-          <CategoryNav />
-        </FullWidthWrapper>
+      <HomeScrollContainer>
+        {/* Category nav — full-width naturally (no max-width parent) */}
+        <CategoryNav />
 
-        {/* Banner 1 */}
-        {banner1 && (
-          <FullWidthWrapper>
-            <HomeBanner content={banner1} />
-          </FullWidthWrapper>
-        )}
+        {/* Banner 1 — full-width naturally */}
+        {banner1 && <HomeBanner content={banner1} />}
 
         {/* Touring Expert carousel */}
-        <div className='px-2 md:px-6'>
+        <div className='max-w-[1280px] mx-auto w-full px-2 md:px-6 py-6'>
           <HomeProductCarousel
             title='Touring Expert'
             categories={categories}
@@ -73,15 +77,11 @@ export default function Home() {
           />
         </div>
 
-        {/* Banner 2 */}
-        {banner2 && (
-          <FullWidthWrapper>
-            <HomeBanner content={banner2} />
-          </FullWidthWrapper>
-        )}
+        {/* Banner 2 — full-width naturally */}
+        {banner2 && <HomeBanner content={banner2} />}
 
         {/* Bestsellers carousel */}
-        <div className='px-2 md:px-6'>
+        <div className='max-w-[1280px] mx-auto w-full px-2 md:px-6 py-6'>
           <HomeProductCarousel
             title='Bestsellers'
             categories={categories}
@@ -90,18 +90,18 @@ export default function Home() {
           />
         </div>
 
-        {/* Banner 3 */}
-        {banner3 && (
-          <FullWidthWrapper>
-            <HomeBanner content={banner3} />
-          </FullWidthWrapper>
-        )}
+        {/* Banner 3 — full-width naturally */}
+        {banner3 && <HomeBanner content={banner3} />}
 
         {/* Featured Brands carousel */}
-        <div className='px-2 md:px-6'>
+        <div className='max-w-[1280px] mx-auto w-full px-2 md:px-6 py-6'>
           <HomeBrandCarousel categories={categories} />
         </div>
-      </Layout>
+
+        <div className='mt-auto pt-5'>
+          <Footer />
+        </div>
+      </HomeScrollContainer>
     </Page>
   );
 }
