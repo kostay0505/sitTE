@@ -24,6 +24,7 @@ const navigationItems: NavItem[] = [
   { title: 'Резюме', path: '/resumes' },
   { title: 'Вакансии', path: '/vacancies' },
   { title: 'Подписки на рассылку', path: '/newsletter-subscriptions' },
+  { title: 'Контент сайта', path: '/site-content' },
 ];
 
 interface SideNavProps {

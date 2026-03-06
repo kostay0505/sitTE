@@ -1,5 +1,6 @@
 export interface BannerSlide {
   image: string;
+  imageMobile?: string;
   buttonText?: string;
   buttonLink?: string;
   buttonPosition?: string;
