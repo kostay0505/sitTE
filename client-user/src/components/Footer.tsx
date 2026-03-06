@@ -1,201 +1,102 @@
 'use client';
 
-import React, { memo, useMemo, useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { memo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/utils/cn';
-import { TelegramIcon, VkIcon, WhatSapp } from './common/SvgIcon';
+import { LogoIcon, TelegramIcon, VkIcon } from './common/SvgIcon';
 import { ROUTES } from '@/config/routes';
-import { TELEGRAM_LINK, VK_LINK, WHATSAPP_LINK } from '@/config/constants';
-import { Input } from './common/Input/Input';
-import { toast } from 'sonner';
-
-import { subscribeNewsletter } from '@/api/newsletter-subscription/methods';
+import { getSiteContentKey } from '@/api/site-content/methods';
 import { isTMA } from '@tma.js/sdk-react';
 
-interface FooterItemsLinks {
-  path: string;
-  label: string;
-  text?: string;
-}
-
-interface FooterItemsIcons {
-  path: string;
-  external?: boolean;
-  icon?: React.ComponentType<{ className?: string }>;
+function parseSocial(data: any): { vk?: string; telegram?: string } {
+  if (!data) return {};
+  if (typeof data === 'object') return data;
+  try {
+    return JSON.parse(data);
+  } catch {
+    return {};
+  }
 }
 
 export const Footer: React.FC = memo(() => {
-  const { push } = useRouter();
-  const [email, setEmail] = useState('');
-  const [emailError, setEmailError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { data: socialData } = useQuery({
+    queryKey: ['siteContent', 'footer_social'],
+    queryFn: () => getSiteContentKey('footer_social'),
+    staleTime: 10 * 60 * 1000,
+  });
 
-  const handleNavigate = (tab: FooterItemsIcons) => {
-    if (tab.external) {
-      window.open(tab.path, '_blank');
-    } else {
-      push(tab.path);
-    }
-  };
-
-  const footerItemsIcons: FooterItemsIcons[] = useMemo(() => {
-    return [
-      {
-        path: TELEGRAM_LINK,
-        external: true,
-        icon: TelegramIcon,
-      },
-      {
-        path: VK_LINK,
-        external: true,
-        icon: VkIcon,
-      },
-      {
-        path: WHATSAPP_LINK,
-        external: true,
-        icon: WhatSapp,
-      },
-    ];
-  }, []);
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success('Скопировано!');
-    } catch (err) {
-      toast.error('Ошибка копирования');
-    }
-  };
-
-  const footerItemsLinks: FooterItemsLinks[] = useMemo(() => {
-    return [
-      {
-        path: ROUTES.CATALOG,
-        label: 'Каталог',
-      },
-      {
-        path: ROUTES.CATALOG,
-        label: 'Телефон',
-        text: '+79995147159',
-      },
-      {
-        path: ROUTES.CATALOG,
-        label: 'email',
-        text: 'klimenkonikita@touringexpertsale.com',
-      },
-    ];
-  }, []);
-
-  const handleSubscribe = async (event: FormEvent) => {
-    event.preventDefault();
-    setEmailError('');
-
-    const trimmedEmail = email.trim();
-
-    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setEmailError('Укажите корректный адрес электронной почты');
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      await subscribeNewsletter({ email: trimmedEmail });
-      toast.success(
-        'Спасибо! Мы будем присылать вам новости и обновления Touring Expert.',
-      );
-      setEmail('');
-    } catch (error: any) {
-      const message = error?.message || '';
-      if (message.includes('уже подписан')) {
-        setEmailError('Этот email уже подписан на рассылку');
-      } else {
-        setEmailError(
-          message || 'Не удалось подписаться на рассылку. Попробуйте ещё раз.',
-        );
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const social = parseSocial(socialData);
 
   return (
     <div
       className={cn(
-        'flex-col flex md:flex-row md:justify-between gap-4 w-full',
-        'bg-primary-green p-4',
-        `${isTMA() ? 'pb-[80px]' : 'pb-[130px]'}`,
-        'md:pb-4',
+        'w-full bg-[#1a1a1a] text-white',
+        isTMA() ? 'pb-[80px]' : 'pb-[120px]',
+        'md:pb-8',
       )}
     >
-      <div className='max-w-[1200px] mx-auto w-full flex flex-col md:flex-row md:justify-between gap-4'>
-        {' '}
-        <div className='flex flex-col flex-1 gap-2 text-left '>
-          <h1 className='text-white text-2xl font-bold'>Ссылки</h1>
-          {footerItemsLinks.map((item, index) => {
-            const Label = item.label;
-            const Text = item.text;
-            return (
-              <div key={index}>
-                {Text ? (
-                  <div
-                    onClick={() => copyToClipboard(Text)}
-                    className='text-left hover:text-green-700 cursor-pointer w-full break-words'
-                  >
-                    {Label}: {Text}
-                  </div>
-                ) : (
-                  <button
-                    className='text-left hover:text-green-700 cursor-pointer '
-                    onClick={() => handleNavigate(item)}
-                  >
-                    {Label}
-                  </button>
-                )}
-              </div>
-            );
-          })}
-          <div className='flex gap-2 mt-auto'>
-            {footerItemsIcons.map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={index}
-                  className='w-10 h-10 fill-white cursor-pointer hover:scale-110 transition-all duration-300'
-                  onClick={() => handleNavigate(item)}
-                >
-                  {Icon && <Icon className='w-10 h-10 fill-white' />}
-                </button>
-              );
-            })}
+      <div className='max-w-[1200px] mx-auto px-6 py-8 flex flex-col md:flex-row md:items-start gap-8'>
+
+        {/* Left: Logo + copyright */}
+        <div className='flex flex-col gap-4 md:max-w-[240px]'>
+          <a href={ROUTES.HOME} className='inline-flex'>
+            <LogoIcon className='h-12 w-auto brightness-0 invert' />
+          </a>
+          <p className='text-xs text-gray-400 leading-relaxed'>
+            &copy;{new Date().getFullYear()} TEM.{' '}
+            <a href='/terms' className='hover:text-white transition'>Terms of Service</a>
+            {' • '}
+            <a href='/privacy' className='hover:text-white transition'>Privacy Policy</a>
+            {' • '}
+            <a href='/cookies' className='hover:text-white transition'>Cookie Policy</a>
+          </p>
+
+          {/* Social icons */}
+          <div className='flex gap-3 mt-2'>
+            {social.vk && (
+              <a href={social.vk} className='w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition'>
+                <VkIcon className='w-5 h-5 fill-white' />
+              </a>
+            )}
+            {social.telegram && (
+              <a href={social.telegram} className='w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition'>
+                <TelegramIcon className='w-5 h-5 fill-white' />
+              </a>
+            )}
           </div>
         </div>
-        <div className='hidden md:flex flex-col flex-2 gap-4 text-left'>
-          <h1 className='text-white text-2xl text-center font-bold'>
-            Новостная рассылка
-          </h1>
-          <p className='text-white text-center text-sm'>
-            Подпишитесь на нашу рассылку и будьте в курсе горячих предложений,
-            новостей и событий.
-          </p>
-          <form onSubmit={handleSubscribe} className='flex flex-col gap-2'>
-            <div className='flex gap-2'>
-              <Input
-                label='Email'
-                type='email'
-                value={email}
-                error={emailError}
-                onChange={e => setEmail(e.target.value)}
-                disabled={isSubmitting}
-              />
-              <button
-                type='submit'
-                disabled={isSubmitting}
-                className='bg-gray-200 text-primary-green flex items-center justify-center px-8 rounded-lg text-lg font-medium shadow-none hover:bg-gray-300 transition disabled:opacity-50 disabled:cursor-not-allowed'
-              >
-                Подписаться
-              </button>
-            </div>
-          </form>
+
+        {/* Right: Link columns */}
+        <div className='flex gap-12 md:ml-auto'>
+          {/* Company */}
+          <div className='flex flex-col gap-3'>
+            <h3 className='text-sm font-semibold uppercase tracking-wider text-gray-400'>Company</h3>
+            {[
+              { label: 'About us', href: '/about' },
+              { label: 'Newsroom', href: '/newsroom' },
+              { label: 'Careers', href: '/careers' },
+              { label: 'Affiliates', href: '/affiliates' },
+              { label: 'Blog', href: '/blog' },
+            ].map(({ label, href }) => (
+              <a key={href} href={href} className='text-sm text-gray-300 hover:text-white transition'>
+                {label}
+              </a>
+            ))}
+          </div>
+
+          {/* Explore */}
+          <div className='flex flex-col gap-3'>
+            <h3 className='text-sm font-semibold uppercase tracking-wider text-gray-400'>Explore</h3>
+            {[
+              { label: 'Help center', href: '/help' },
+              { label: 'Sell on TEM', href: '/sell-on-tem' },
+              { label: 'Catalog', href: ROUTES.CATALOG },
+            ].map(({ label, href, label2 }) => (
+              <a key={href || label} href={href || label} className='text-sm text-gray-300 hover:text-white transition'>
+                {label2 || label}
+              </a>
+            ))}
+          </div>
         </div>
       </div>
     </div>

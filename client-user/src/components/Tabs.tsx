@@ -1,10 +1,10 @@
 'use client';
 
-import React, { memo, useEffect, useMemo } from 'react';
+import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/utils/cn';
 import { TgIcon2, LogoIcon } from './common/SvgIcon';
-import { Briefcase, DoorOpen, LayoutGrid, MessageCircle, UserRound } from 'lucide-react';
+import { Briefcase, DoorOpen, Globe, LayoutGrid, MessageCircle, Search, UserRound } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 import { TG_LINK } from '@/config/constants';
 import { LoginModal } from '@/components/Auth/LoginModal';
@@ -16,6 +16,8 @@ import { saveTokens, clearTokens, getTokens } from '@/api/auth/tokenStorage';
 import { isTokenExpired } from '@/utils/tokenUtils';
 import { useAuthStore } from '@/stores/authStore';
 import { useChatList } from '@/hooks/useChatList';
+import { useQuery } from '@tanstack/react-query';
+import { getSiteContentKey } from '@/api/site-content/methods';
 
 interface TabItem {
   path: string;
@@ -28,11 +30,122 @@ interface TabItem {
   requiresAuth?: boolean;
 }
 
+function Preheader() {
+  const { data } = useQuery({
+    queryKey: ['siteContent', 'preheader'],
+    queryFn: () => getSiteContentKey('preheader'),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  let html = '';
+  if (typeof data === 'string') html = data;
+  else if (data && typeof data === 'object' && data.html) html = data.html;
+
+  return (
+    <div
+      className='w-full bg-gray-100 text-gray-700 text-xs text-center px-4 py-1 min-h-[28px]'
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
+function DesktopHeader() {
+  const router = useRouter();
+  const isAuthorized = useAuthStore(s => s.isAuthorized);
+  const setAuthMode = useAuthStore(s => s.setAuthMode);
+  const [searchValue, setSearchValue] = useState('');
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchValue.trim();
+    if (q) router.push(`${ROUTES.CATALOG}?q=${encodeURIComponent(q)}`);
+  };
+
+  return (
+    <div className='flex items-center h-[72px] px-6 gap-4 bg-white border-b border-gray-100 max-w-[1400px] mx-auto w-full'>
+      {/* Logo */}
+      <button
+        onClick={() => router.push(ROUTES.HOME)}
+        className='shrink-0 flex items-center'
+        aria-label='Home'
+      >
+        <LogoIcon className='h-10 w-auto' />
+      </button>
+
+      {/* Search */}
+      <form
+        onSubmit={handleSearch}
+        className='flex-1 max-w-[480px] flex items-center border border-gray-300 rounded-full overflow-hidden bg-white hover:border-gray-400 transition'
+      >
+        <input
+          type='text'
+          value={searchValue}
+          onChange={e => setSearchValue(e.target.value)}
+          placeholder='Поиск по каталогу...'
+          className='flex-1 px-4 py-2 text-sm outline-none bg-transparent'
+        />
+        <button
+          type='submit'
+          className='px-3 py-2 text-gray-500 hover:text-black transition'
+          aria-label='Search'
+        >
+          <Search className='w-4 h-4' />
+        </button>
+      </form>
+
+      {/* Right nav */}
+      <div className='ml-auto flex items-center gap-2'>
+        <button className='flex items-center gap-1 text-sm text-gray-600 hover:text-black px-2 py-1 rounded transition'>
+          <Globe className='w-4 h-4' />
+          <span>RU</span>
+        </button>
+
+        <a
+          href='/sell-on-tem'
+          className='text-sm text-gray-700 hover:text-black px-2 py-1 rounded transition whitespace-nowrap'
+        >
+          Sell on TEM
+        </a>
+
+        <a
+          href='/blog'
+          className='text-sm text-gray-700 hover:text-black px-2 py-1 rounded transition'
+        >
+          Blog
+        </a>
+
+        {isAuthorized ? (
+          <button
+            onClick={() => router.push(ROUTES.PROFILE)}
+            className='flex items-center gap-1 text-sm text-gray-700 hover:text-black px-3 py-1.5 rounded-full border border-gray-300 hover:border-gray-500 transition'
+          >
+            <UserRound className='w-4 h-4' />
+            <span>Профиль</span>
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={() => setAuthMode('login')}
+              className='text-sm text-gray-700 hover:text-black px-3 py-1.5 rounded-full border border-gray-300 hover:border-gray-500 transition'
+            >
+              Sign Up
+            </button>
+            <button
+              onClick={() => setAuthMode('register')}
+              className='text-sm bg-black text-white px-4 py-1.5 rounded-full hover:bg-gray-800 transition'
+            >
+              Join Free
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export const Tabs: React.FC = memo(() => {
   const pathname = usePathname();
-  const router = useRouter();
   const { push } = useRouter();
-  // Hide tab bar on mobile when inside a specific chat window
   const isChatWindow = /^\/chats\/[^/]+/.test(pathname);
   const authMode = useAuthStore(s => s.authMode);
   const setAuthMode = useAuthStore(s => s.setAuthMode);
@@ -50,7 +163,6 @@ export const Tabs: React.FC = memo(() => {
 
   useEffect(() => {
     const tokens = getTokens();
-
     if (tokens && tokens.accessToken && !isTokenExpired(tokens.accessToken)) {
       setAuthorized(true);
     } else {
@@ -88,12 +200,6 @@ export const Tabs: React.FC = memo(() => {
         requiresAuth: true,
       },
       {
-        path: ROUTES.JOB,
-        icon: Briefcase,
-        isActive: pathname => pathname.startsWith(ROUTES.JOB),
-        text: 'Работа',
-      },
-      {
         path: ROUTES.PROFILE,
         icon: UserRound,
         isActive: pathname => pathname.startsWith(ROUTES.PROFILE),
@@ -107,12 +213,12 @@ export const Tabs: React.FC = memo(() => {
       window.open(tab.path, '_blank');
       return;
     }
-
     push(tab.path);
   };
 
   return (
     <>
+      {/* Mobile bottom tabs */}
       <div
         className={cn(
           'fixed left-2 right-2 z-50',
@@ -120,35 +226,23 @@ export const Tabs: React.FC = memo(() => {
           'bg-[#F5F5FA] rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.1)]',
           'h-[60px] px-2',
           'bottom-4',
-          'md:w-full md:top-0 md:bottom-auto md:bg-white md:h-[100px]',
-          'md:left-1/2 md:right-auto md:transform md:-translate-x-1/2 md:shadow-none',
-          'md:justify-center md:gap-16',
-          isChatWindow && 'hidden md:flex',
+          'md:hidden',
+          isChatWindow && 'hidden',
         )}
       >
         {tabs.map((tab, index) => {
-          if (
-            !isAuthorized &&
-            (tab.path.startsWith(ROUTES.PROFILE) || tab.requiresAuth)
-          ) {
+          if (!isAuthorized && (tab.path.startsWith(ROUTES.PROFILE) || tab.requiresAuth)) {
             return (
               <button
                 key={index}
                 onClick={() => setAuthMode('login')}
-                className={cn(
-                  'flex flex-col items-center justify-center gap-1 cursor-pointer text-[#1E1E1E] transition',
-                  'hover:text-green-700 active:text-green-700',
-                  'md:text-sm',
-                )}
+                className='flex flex-col items-center justify-center gap-1 cursor-pointer text-[#1E1E1E] transition hover:text-green-700 active:text-green-700'
               >
                 {tab.requiresAuth ? (
-                  <tab.icon className='w-7 h-7 md:w-9 md:h-9' />
+                  <tab.icon className='w-7 h-7' />
                 ) : (
-                  <DoorOpen className='w-7 h-7 md:w-9 md:h-9' />
+                  <DoorOpen className='w-7 h-7' />
                 )}
-                <span className={cn('hidden md:block')}>
-                  {tab.requiresAuth ? tab.text : 'Вход'}
-                </span>
               </button>
             );
           }
@@ -156,7 +250,6 @@ export const Tabs: React.FC = memo(() => {
           const Icon = tab.icon;
           const isActive = tab.isActive(pathname);
           const isLogo = tab?.isLogo;
-          const text = tab?.text;
           const isChats = tab.path === ROUTES.CHATS;
 
           return (
@@ -167,27 +260,25 @@ export const Tabs: React.FC = memo(() => {
                 'flex flex-col items-center justify-center gap-1 cursor-pointer text-[#1E1E1E] transition',
                 'hover:text-green-700 active:text-green-700',
                 isActive && 'text-green-700',
-                'md:text-sm',
               )}
             >
-              <div className="relative">
-                <Icon
-                  className={cn(
-                    isLogo
-                      ? 'w-[60px] h-7 md:h-[70px] md:object-contain md:w-auto'
-                      : 'w-7 h-7 md:w-9 md:h-9',
-                  )}
-                />
+              <div className='relative'>
+                <Icon className={cn(isLogo ? 'w-[60px] h-7' : 'w-7 h-7')} />
                 {isChats && totalUnread > 0 && (
-                  <span className="absolute -top-1 -right-1.5 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                  <span className='absolute -top-1 -right-1.5 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none'>
                     {totalUnread > 99 ? '99+' : totalUnread}
                   </span>
                 )}
               </div>
-              {text && <span className={cn('hidden md:block')}>{text}</span>}
             </button>
           );
         })}
+      </div>
+
+      {/* Desktop header */}
+      <div className='hidden md:block fixed top-0 left-0 right-0 z-50 bg-white shadow-sm'>
+        <Preheader />
+        <DesktopHeader />
       </div>
 
       <LoginModal
@@ -227,11 +318,9 @@ export const Tabs: React.FC = memo(() => {
                 email: authEmail,
                 password: authPassword,
               });
-
               saveTokens(tokens);
             } catch (error) {}
           }
-
           setAuthorized(true);
           setAuthMode('none');
         }}

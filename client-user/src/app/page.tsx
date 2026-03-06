@@ -1,130 +1,106 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Layout } from '@/components/Layout';
 import { Page } from '@/components/Page';
-import { SearchInput } from '@/components/SearchInput';
-import {
-  Carousel,
-  defaultCarouselBreakpoints,
-} from '@/components/common/Carousel/Carousel';
-import { ProductCard } from '@/components/Catalog/ProductCard';
-import { ROUTES } from '@/config/routes';
-import { useProductsBasicInfo } from '@/features/products/hooks';
-import type { ProductBasic } from '@/api/products/types';
-import { QuestionsSection } from '@/components/Catalog/QuestionsSection';
-import { useClientSearch } from '@/hooks/useClientSearch';
-import { Brands } from '@/components/Catalog/Brands';
-import { useAvailableBrands } from '@/features/brands/hooks';
-import { useRouter } from 'next/navigation';
-import { InfoSection } from '@/components/Catalog/InfoSection';
+import { HomeBanner } from '@/components/home/HomeBanner';
+import { HomeProductCarousel } from '@/components/home/HomeProductCarousel';
+import { HomeBrandCarousel } from '@/components/home/HomeBrandCarousel';
+import { CategoryNav } from '@/components/home/CategoryNav';
+import { getHomeCategories, getTouringExpertProducts, getBestsellers } from '@/api/home/methods';
+import { getSiteContentAll } from '@/api/site-content/methods';
+import type { BannerContent } from '@/api/site-content/types';
 
-function renderProductsCarousel(
-  label: string,
-  items: ProductBasic[] | undefined,
-  isLoading: boolean,
-  emptyText: string, // ← текст для пустого состояния
-) {
-  const has = (items?.length ?? 0) > 0;
+function parseBanner(raw: any): BannerContent | null {
+  if (!raw) return null;
+  if (typeof raw === 'object' && Array.isArray(raw.slides)) return raw as BannerContent;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed.slides)) return parsed;
+    } catch {}
+  }
+  return null;
+}
 
-  const list = isLoading
-    ? Array.from({ length: 10 }).map((_, i) => ({ id: `sk-${i}` }) as any)
-    : has
-      ? items!
-      : [];
-
+function FullWidthWrapper({ children }: { children: React.ReactNode }) {
   return (
-    <Carousel
-      key={label}
-      items={list}
-      renderItem={(item: any) => (
-        <ProductCard
-          product={isLoading ? undefined : (item as ProductBasic)}
-          isLoading={isLoading}
-          href={isLoading ? '' : `${ROUTES.CATALOG}/${item.id}`}
-        />
-      )}
-      label={label}
-      breakpoints={defaultCarouselBreakpoints}
-      emptyText={emptyText}
-    />
+    <div style={{ width: '100vw', marginLeft: 'calc(-50vw + 50%)' }}>
+      {children}
+    </div>
   );
 }
 
 export default function Home() {
-  const router = useRouter();
-
-  const [searchValue, setSearchValue] = useState('');
-
-  const { data, status } = useProductsBasicInfo();
-  const isLoadingProducts = status === 'pending';
-
-  const { data: brands = [], status: brandsStatus } = useAvailableBrands();
-  const brandsLoading = brandsStatus === 'pending';
-
-  const newItems = useMemo(() => data?.new ?? [], [data]);
-  const mainSellerItems = useMemo(() => data?.mainSeller ?? [], [data]);
-  const popularItems = useMemo(() => data?.popular ?? [], [data]);
-
-  const sNew = useClientSearch(newItems, {
-    keys: ['name', 'description'],
-    delay: 300,
-  });
-  const sMain = useClientSearch(mainSellerItems, {
-    keys: ['name', 'description'],
-    delay: 300,
-  });
-  const sPopular = useClientSearch(popularItems, {
-    keys: ['name', 'description'],
-    delay: 300,
+  const { data: categories = [] } = useQuery({
+    queryKey: ['homeCategories'],
+    queryFn: getHomeCategories,
+    staleTime: 10 * 60 * 1000,
   });
 
-  const emptyText = 'Продуктов пока нет';
+  const { data: siteContent = {} } = useQuery({
+    queryKey: ['siteContentAll'],
+    queryFn: getSiteContentAll,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const handleSearch = (q: string) => {
-    router.push(`${ROUTES.CATALOG}?q=${encodeURIComponent(q)}`);
-  };
+  const banner1 = parseBanner(siteContent.banner1);
+  const banner2 = parseBanner(siteContent.banner2);
+  const banner3 = parseBanner(siteContent.banner3);
 
   return (
     <Page back={false}>
-      <Layout className='px-2 pt-4 flex flex-col gap-5'>
-        <SearchInput
-          value={searchValue}
-          onChange={setSearchValue}
-          className='md:hidden'
-          onSearch={handleSearch}
-        />
-        <div className='flex flex-col gap-5'>
-          <InfoSection />
-          {renderProductsCarousel(
-            'Новое',
-            sNew.filtered,
-            isLoadingProducts,
-            emptyText,
-          )}
-          {(isLoadingProducts || sMain.filtered.length > 0) &&
-            renderProductsCarousel(
-              'Touring Expert',
-              sMain.filtered,
-              isLoadingProducts,
-              emptyText,
-            )}
-          {renderProductsCarousel(
-            'Лучшие предложения',
-            sPopular.filtered,
-            isLoadingProducts,
-            emptyText,
-          )}
+      <Layout className='flex flex-col gap-8 pb-8'>
+        {/* Category nav (desktop only, right under header) */}
+        <FullWidthWrapper>
+          <CategoryNav />
+        </FullWidthWrapper>
+
+        {/* Banner 1 */}
+        {banner1 && (
+          <FullWidthWrapper>
+            <HomeBanner content={banner1} />
+          </FullWidthWrapper>
+        )}
+
+        {/* Touring Expert carousel */}
+        <div className='px-2 md:px-6'>
+          <HomeProductCarousel
+            title='Touring Expert'
+            categories={categories}
+            fetchProducts={getTouringExpertProducts}
+            queryKey='touringExpert'
+          />
         </div>
 
-        <QuestionsSection />
+        {/* Banner 2 */}
+        {banner2 && (
+          <FullWidthWrapper>
+            <HomeBanner content={banner2} />
+          </FullWidthWrapper>
+        )}
 
-        <Brands
-          brands={brands
-            .sort((a, b) => (b.productCount) - (a.productCount))
-            .slice(0, 25)}
-          isLoading={brandsLoading}
-        />
+        {/* Bestsellers carousel */}
+        <div className='px-2 md:px-6'>
+          <HomeProductCarousel
+            title='Bestsellers'
+            categories={categories}
+            fetchProducts={getBestsellers}
+            queryKey='bestsellers'
+          />
+        </div>
+
+        {/* Banner 3 */}
+        {banner3 && (
+          <FullWidthWrapper>
+            <HomeBanner content={banner3} />
+          </FullWidthWrapper>
+        )}
+
+        {/* Featured Brands carousel */}
+        <div className='px-2 md:px-6'>
+          <HomeBrandCarousel categories={categories} />
+        </div>
       </Layout>
     </Page>
   );
