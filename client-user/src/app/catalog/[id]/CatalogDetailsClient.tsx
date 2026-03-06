@@ -207,9 +207,9 @@ export function CatalogDetailsClient() {
                 {!isLoading && sellerTgId && (
                   <Link
                     href={`${ROUTES.SALLER}/${sellerTgId}`}
-                    className='text-xs font-medium text-black border border-black rounded px-3 py-1 hover:bg-black hover:text-white transition whitespace-nowrap shrink-0'
+                    className='ml-auto bg-black text-white text-xs font-medium rounded px-4 py-2 whitespace-nowrap shrink-0 hover:bg-black/80 transition'
                   >
-                    Shop all{sellerProducts.length > 0 ? ` ${sellerProducts.length}` : ''} products
+                    {'Shop all' + (sellerProducts.length > 0 ? ' ' + sellerProducts.length : '') + ' products'}
                   </Link>
                 )}
               </div>
