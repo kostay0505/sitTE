@@ -165,7 +165,7 @@ export default function SellerPage() {
   };
 
   /* ── Category tabs ── */
-  const { categoryOptions } = useCategoryFilterOptions();
+  const { categoryOptions, all: allCategories } = useCategoryFilterOptions();
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
 
   /* ── All products (for category detection) ── */
@@ -174,13 +174,24 @@ export default function SellerPage() {
     { enabled: !!seller },
   );
   const availableCategoryIds = useMemo(() => {
+    // Map child→parent so we can resolve sub-category IDs up to root
+    const childToParent = new Map<string, string>();
+    for (const cat of allCategories) {
+      if (cat.parentId) childToParent.set(cat.id, cat.parentId);
+    }
     const ids = new Set<string>();
     allProductsQuery.items.forEach(p => {
       const catId = p.category?.id ?? p.categoryId;
-      if (catId) ids.add(catId);
+      if (!catId) return;
+      // Walk up to root
+      let cur: string | undefined = catId;
+      while (cur) {
+        ids.add(cur);
+        cur = childToParent.get(cur);
+      }
     });
     return ids;
-  }, [allProductsQuery.items]);
+  }, [allProductsQuery.items, allCategories]);
   const visibleCategories = useMemo(
     () => categoryOptions.filter(cat => availableCategoryIds.has(cat.value)),
     [categoryOptions, availableCategoryIds],
