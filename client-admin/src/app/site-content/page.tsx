@@ -113,6 +113,33 @@ const btnStyle = (bg = '#2563eb'): React.CSSProperties => ({
   padding: '8px 18px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
 });
 
+interface AboutOffer { title: string; desc: string; }
+interface AboutContent {
+  heroTitle: string; heroText: string;
+  missionTitle: string; missionText: string;
+  offersTitle: string; offers: AboutOffer[];
+  shopTitle: string; shopText: string; shopSlug: string; shopButtonText: string;
+  contactEmail: string;
+}
+
+const DEFAULT_ABOUT: AboutContent = {
+  heroTitle: 'About Touring Expert',
+  heroText: 'Touring Expert Marketplace (TEM) is a professional platform for buying and selling high-quality audio, lighting, and staging equipment for touring, events, and live production.',
+  missionTitle: 'Our Mission',
+  missionText: 'We connect professional equipment sellers with buyers worldwide — making it easier to source trusted gear for your next tour, festival, or installation. Every listing on TEM goes through moderation to ensure quality and accuracy.',
+  offersTitle: 'What We Offer',
+  offers: [
+    { title: 'Professional Gear', desc: 'Audio, lighting, video, staging and rigging equipment from verified sellers.' },
+    { title: 'Direct Deals', desc: 'Connect directly with sellers. No middlemen, transparent pricing.' },
+    { title: 'Telegram Mini App', desc: 'Access the full marketplace inside Telegram — fast and convenient.' },
+  ],
+  shopTitle: 'Touring Expert Official Store',
+  shopText: 'Browse our curated selection of professional equipment',
+  shopSlug: 'touring_expert',
+  shopButtonText: 'Visit Shop →',
+  contactEmail: 'touringexperteu@gmail.com',
+};
+
 export default function SiteContentPage() {
   usePageTitle('Контент сайта');
 
@@ -128,6 +155,9 @@ export default function SiteContentPage() {
 
   const [social, setSocial] = useState({ vk: '', telegram: '' });
   const [socialSaving, setSocialSaving] = useState(false);
+
+  const [about, setAbout] = useState<AboutContent>(DEFAULT_ABOUT);
+  const [aboutSaving, setAboutSaving] = useState(false);
 
   const [msg, setMsg] = useState('');
   const showMsg = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
@@ -150,6 +180,10 @@ export default function SiteContentPage() {
     getSiteContent('footer_social').then(d => {
       const src = typeof d === 'string' ? (() => { try { return JSON.parse(d); } catch { return {}; } })() : (d ?? {});
       setSocial({ vk: src.vk || '', telegram: src.telegram || '' });
+    }).catch(() => {});
+
+    getSiteContent('about_page').then(d => {
+      if (d && typeof d === 'object') setAbout({ ...DEFAULT_ABOUT, ...d });
     }).catch(() => {});
   }, []);
 
@@ -191,6 +225,17 @@ export default function SiteContentPage() {
     try { await setSiteContent('footer_social', social); showMsg('Соцсети сохранены ✓'); }
     catch { showMsg('Ошибка сохранения'); } finally { setSocialSaving(false); }
   };
+
+  const saveAbout = async () => {
+    setAboutSaving(true);
+    try { await setSiteContent('about_page', about); showMsg('Страница About сохранена ✓'); }
+    catch { showMsg('Ошибка сохранения'); } finally { setAboutSaving(false); }
+  };
+
+  const updateOffer = (idx: number, field: keyof AboutOffer, val: string) =>
+    setAbout(p => { const offers = [...p.offers]; offers[idx] = { ...offers[idx], [field]: val }; return { ...p, offers }; });
+  const addOffer = () => setAbout(p => ({ ...p, offers: [...p.offers, { title: '', desc: '' }] }));
+  const removeOffer = (idx: number) => setAbout(p => ({ ...p, offers: p.offers.filter((_, i) => i !== idx) }));
 
   const renderBanner = (bk: keyof Banners, label: string) => {
     const banner = banners[bk];
@@ -342,6 +387,109 @@ export default function SiteContentPage() {
         </div>
         <button onClick={saveSocial} disabled={socialSaving} style={{ ...btnStyle(), marginTop: '10px' }}>
           {socialSaving ? 'Сохранение...' : 'Сохранить'}
+        </button>
+      </div>
+
+      {/* About page editor */}
+      <div style={sectionStyle}>
+        <h2 style={{ margin: '0 0 20px', fontSize: '18px', color: '#111' }}>Страница About Us</h2>
+
+        {/* Hero */}
+        <p style={{ fontWeight: 600, fontSize: '14px', color: '#374151', margin: '0 0 10px' }}>Герой</p>
+        <div style={{ display: 'grid', gap: '10px', marginBottom: '20px' }}>
+          <div>
+            <label style={labelStyle}>Заголовок</label>
+            <input style={inputStyle} value={about.heroTitle}
+              onChange={e => setAbout(p => ({ ...p, heroTitle: e.target.value }))} />
+          </div>
+          <div>
+            <label style={labelStyle}>Описание</label>
+            <textarea style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} value={about.heroText}
+              onChange={e => setAbout(p => ({ ...p, heroText: e.target.value }))} />
+          </div>
+        </div>
+
+        {/* Mission */}
+        <p style={{ fontWeight: 600, fontSize: '14px', color: '#374151', margin: '0 0 10px' }}>Наша миссия</p>
+        <div style={{ display: 'grid', gap: '10px', marginBottom: '20px' }}>
+          <div>
+            <label style={labelStyle}>Заголовок</label>
+            <input style={inputStyle} value={about.missionTitle}
+              onChange={e => setAbout(p => ({ ...p, missionTitle: e.target.value }))} />
+          </div>
+          <div>
+            <label style={labelStyle}>Текст</label>
+            <textarea style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }} value={about.missionText}
+              onChange={e => setAbout(p => ({ ...p, missionText: e.target.value }))} />
+          </div>
+        </div>
+
+        {/* What we offer */}
+        <p style={{ fontWeight: 600, fontSize: '14px', color: '#374151', margin: '0 0 10px' }}>Что мы предлагаем</p>
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: '10px' }}>
+            <label style={labelStyle}>Заголовок секции</label>
+            <input style={inputStyle} value={about.offersTitle}
+              onChange={e => setAbout(p => ({ ...p, offersTitle: e.target.value }))} />
+          </div>
+          {about.offers.map((offer, idx) => (
+            <div key={idx} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '14px', marginBottom: '10px', background: '#f9fafb' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontWeight: 600, fontSize: '13px' }}>Карточка {idx + 1}</span>
+                <button onClick={() => removeOffer(idx)} style={{ ...btnStyle('#dc2626'), padding: '3px 8px', fontSize: '12px' }}>Удалить</button>
+              </div>
+              <div style={{ display: 'grid', gap: '8px' }}>
+                <div>
+                  <label style={labelStyle}>Название</label>
+                  <input style={inputStyle} value={offer.title}
+                    onChange={e => updateOffer(idx, 'title', e.target.value)} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Описание</label>
+                  <textarea style={{ ...inputStyle, minHeight: '60px', resize: 'vertical' }} value={offer.desc}
+                    onChange={e => updateOffer(idx, 'desc', e.target.value)} />
+                </div>
+              </div>
+            </div>
+          ))}
+          <button onClick={addOffer} style={{ ...btnStyle('#059669'), padding: '6px 14px', fontSize: '13px' }}>+ Добавить карточку</button>
+        </div>
+
+        {/* Shop block */}
+        <p style={{ fontWeight: 600, fontSize: '14px', color: '#374151', margin: '0 0 10px' }}>Блок магазина</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+          <div>
+            <label style={labelStyle}>Заголовок</label>
+            <input style={inputStyle} value={about.shopTitle}
+              onChange={e => setAbout(p => ({ ...p, shopTitle: e.target.value }))} />
+          </div>
+          <div>
+            <label style={labelStyle}>Подзаголовок</label>
+            <input style={inputStyle} value={about.shopText}
+              onChange={e => setAbout(p => ({ ...p, shopText: e.target.value }))} />
+          </div>
+          <div>
+            <label style={labelStyle}>Slug магазина (часть URL после /shop/)</label>
+            <input style={inputStyle} value={about.shopSlug} placeholder="touring_expert"
+              onChange={e => setAbout(p => ({ ...p, shopSlug: e.target.value }))} />
+          </div>
+          <div>
+            <label style={labelStyle}>Текст кнопки</label>
+            <input style={inputStyle} value={about.shopButtonText}
+              onChange={e => setAbout(p => ({ ...p, shopButtonText: e.target.value }))} />
+          </div>
+        </div>
+
+        {/* Contact */}
+        <p style={{ fontWeight: 600, fontSize: '14px', color: '#374151', margin: '0 0 10px' }}>Контакты</p>
+        <div style={{ marginBottom: '20px' }}>
+          <label style={labelStyle}>Email</label>
+          <input style={inputStyle} value={about.contactEmail} placeholder="email@example.com"
+            onChange={e => setAbout(p => ({ ...p, contactEmail: e.target.value }))} />
+        </div>
+
+        <button onClick={saveAbout} disabled={aboutSaving} style={btnStyle()}>
+          {aboutSaving ? 'Сохранение...' : 'Сохранить страницу About'}
         </button>
       </div>
     </div>
