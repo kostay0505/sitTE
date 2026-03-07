@@ -138,7 +138,7 @@ function ShowcaseRenderer({ block, sellerId }: { block: ShowcaseBlock; sellerId:
   const [products, setProducts] = useState<any[]>([]);
   useEffect(() => {
     getAvailableProducts({ sellerId, categoryId: block.categoryId ?? undefined, limit: 10 })
-      .then(r => setProducts(r.items ?? []))
+      .then(r => setProducts(r ?? []))
       .catch(() => {});
   }, [sellerId, block.categoryId]);
 
