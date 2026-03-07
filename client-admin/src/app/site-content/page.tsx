@@ -141,7 +141,8 @@ const DEFAULT_ABOUT: AboutContent = {
 };
 
 export default function SiteContentPage() {
-  usePageTitle('Контент сайта');
+  const { setPageTitle } = usePageTitle();
+  useEffect(() => { setPageTitle('Контент сайта'); }, []);
 
   const [preheader, setPreheader] = useState('');
   const [preheaderSaving, setPreheaderSaving] = useState(false);
