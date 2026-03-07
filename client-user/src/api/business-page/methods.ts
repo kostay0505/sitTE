@@ -23,3 +23,12 @@ export async function getBusinessPageBySlug(slug: string): Promise<BusinessPage>
   const res = await api.get<BusinessPage>(`/business-page/${slug}`);
   return res.data;
 }
+
+export async function getBusinessPageSlugByUserId(userId: string): Promise<string | null> {
+  try {
+    const res = await api.get<{ slug: string }>(`/business-page/user/${userId}`);
+    return res.data?.slug ?? null;
+  } catch {
+    return null;
+  }
+}

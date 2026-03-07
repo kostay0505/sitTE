@@ -27,6 +27,9 @@ import { MailModule } from './services/mail/mail.module';
 import { NewsletterSubscriptionModule } from './modules/newsletter-subscription/newsletter-subscription.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ChatModule } from './modules/chat/chat.module';
+import { BusinessPageModule } from './modules/business-page/business-page.module';
+import { HomeModule } from './modules/home/home.module';
+import { SiteContentModule } from './modules/site-content/site-content.module';
 
 @Module({
   imports: [
@@ -99,6 +102,9 @@ import { ChatModule } from './modules/chat/chat.module';
     MailModule,
     NewsletterSubscriptionModule,
     ChatModule,
+    BusinessPageModule,
+    HomeModule,
+    SiteContentModule,
   ],
   controllers: [],
   providers: [Logger]

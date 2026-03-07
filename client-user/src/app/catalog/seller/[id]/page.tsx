@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Camera, MessageSquare, MoreHorizontal, UserPlus, X } from 'lucide-react';
 
@@ -19,6 +19,7 @@ import { ROUTES } from '@/config/routes';
 import { toImageSrc } from '@/utils/toImageSrc';
 import { uploadFile } from '@/api/files/methods';
 import { updateBannerUrl } from '@/api/user/methods';
+import { getBusinessPageSlugByUserId } from '@/api/business-page/methods';
 import { Footer } from '@/components/Footer';
 
 const DESKTOP_HEADER_HEIGHT = 149;
@@ -126,6 +127,14 @@ export default function SellerPage() {
   const sellerLoading = sellerStatus === 'pending';
 
   const isOwner = isAuthorized && !!userData && !!seller && userData.tgId === seller.tgId;
+
+  // Redirect to business page if seller has one
+  useEffect(() => {
+    if (!seller) return;
+    getBusinessPageSlugByUserId(seller.tgId).then(slug => {
+      if (slug) router.replace(`/shop/${slug}`);
+    });
+  }, [seller?.tgId]);
 
   const sellerName = useMemo(() => {
     if (!seller) return '';
