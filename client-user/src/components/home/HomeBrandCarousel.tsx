@@ -1,11 +1,11 @@
 'use client';
 
-import { FC, useState } from 'react';
+import { FC, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
 import 'swiper/css';
-import 'swiper/css/navigation';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { toImageSrc } from '@/utils/toImageSrc';
 import { Skeleton } from '@/components/common/Skeleton/Skeleton';
@@ -19,7 +19,7 @@ interface Props {
 
 const brandBreakpoints = {
   0: { slidesPerView: 2.5, spaceBetween: 8 },
-  640: { slidesPerView: 4, spaceBetween: 12 },
+  640: { slidesPerView: 3, spaceBetween: 12 },
   1024: { slidesPerView: 6, spaceBetween: 16 },
 };
 
@@ -32,8 +32,6 @@ export const HomeBrandCarousel: FC<Props> = ({ categories }) => {
     filteredCategories[0]?.id,
   );
 
-  const activeCategory = filteredCategories.find(c => c.id === activeCatId) ?? filteredCategories[0];
-
   const { data: brands = [], isLoading } = useQuery({
     queryKey: ['homeBrands', activeCatId],
     queryFn: () => getFeaturedBrands(activeCatId, 12),
@@ -44,19 +42,14 @@ export const HomeBrandCarousel: FC<Props> = ({ categories }) => {
     ? Array.from({ length: 12 }).map((_, i) => ({ id: `sk-${i}` }) as any)
     : brands;
 
+  const prevRef = useRef<HTMLButtonElement>(null);
+  const nextRef = useRef<HTMLButtonElement>(null);
+
   return (
     <div className='w-full'>
-      {/* Title row */}
-      <div className='flex items-center justify-between mb-2'>
+      {/* Title row — no Shop all for brands */}
+      <div className='mb-2'>
         <h2 className='text-2xl md:text-3xl font-bold text-black'>Featured Brands</h2>
-        {activeCategory && (
-          <a
-            href={`${ROUTES.BRANDS}/${activeCategory.id}`}
-            className='text-xs md:text-sm text-primary-green hover:underline whitespace-nowrap shrink-0'
-          >
-            Shop all {activeCategory.name} →
-          </a>
-        )}
       </div>
 
       {/* Category pills row */}
@@ -79,47 +72,71 @@ export const HomeBrandCarousel: FC<Props> = ({ categories }) => {
         </div>
       )}
 
+      {/* Carousel with outside arrows */}
       <div className='relative'>
+        <button
+          ref={prevRef}
+          className='hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-5 z-10 w-9 h-9 items-center justify-center bg-white rounded-full shadow border border-gray-200 hover:bg-gray-50 transition'
+          aria-label='Previous'
+        >
+          <ChevronLeft className='w-4 h-4 text-gray-700' />
+        </button>
+
         <Swiper
           modules={[Navigation]}
           breakpoints={brandBreakpoints}
-          navigation
+          navigation={{ prevEl: prevRef.current, nextEl: nextRef.current }}
+          onBeforeInit={swiper => {
+            (swiper.params.navigation as any).prevEl = prevRef.current;
+            (swiper.params.navigation as any).nextEl = nextRef.current;
+          }}
           loop={items.length >= 6}
           speed={400}
         >
           {items.map((item: any, index: number) => (
             <SwiperSlide key={item.id || index}>
               <a
-                href={`${ROUTES.BRANDS}/${item.id}`}
-                className='flex flex-col items-center gap-2 p-3 rounded-xl bg-white hover:bg-gray-50 transition'
+                href={isLoading ? undefined : `${ROUTES.BRANDS}/${item.id}`}
+                className='relative flex flex-col justify-between h-full bg-white rounded-xl shadow-md transition hover:shadow-lg max-h-[199px] md:max-h-[436px] p-4 md:bg-[#F5F5FA] md:shadow-none md:hover:shadow-none'
               >
-                {isLoading ? (
-                  <>
-                    <Skeleton height={80} width='100%' className='rounded-lg' />
-                    <Skeleton height={14} width='70%' />
-                  </>
-                ) : (
-                  <>
-                    <div className='w-full h-[80px] flex items-center justify-center overflow-hidden rounded-lg bg-gray-100'>
+                <div className='overflow-hidden mb-4'>
+                  {isLoading ? (
+                    <Skeleton height={100} width='100%' className='rounded-xl md:!h-[300px]' />
+                  ) : (
+                    <div className='w-full h-[100px] md:h-[300px] flex items-center justify-center overflow-hidden rounded-xl bg-gray-100'>
                       {item.photo ? (
                         <img
                           src={toImageSrc(item.photo)}
                           alt={item.name}
-                          className='max-h-[80px] max-w-full object-contain'
+                          className='max-h-full max-w-full object-contain'
                         />
                       ) : (
                         <span className='text-xs text-gray-400 text-center px-2'>{item.name}</span>
                       )}
                     </div>
-                    <span className='text-xs md:text-sm text-center font-medium truncate w-full'>
+                  )}
+                </div>
+                <div className='flex flex-col gap-1 text-black'>
+                  {isLoading ? (
+                    <Skeleton height={15} width='100%' />
+                  ) : (
+                    <div className='text-xs md:text-lg font-medium text-center line-clamp-2 min-h-8 md:min-h-14'>
                       {item.name}
-                    </span>
-                  </>
-                )}
+                    </div>
+                  )}
+                </div>
               </a>
             </SwiperSlide>
           ))}
         </Swiper>
+
+        <button
+          ref={nextRef}
+          className='hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-5 z-10 w-9 h-9 items-center justify-center bg-white rounded-full shadow border border-gray-200 hover:bg-gray-50 transition'
+          aria-label='Next'
+        >
+          <ChevronRight className='w-4 h-4 text-gray-700' />
+        </button>
       </div>
     </div>
   );

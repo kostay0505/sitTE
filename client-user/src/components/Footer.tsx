@@ -11,11 +11,7 @@ import { isTMA } from '@tma.js/sdk-react';
 function parseSocial(data: any): { vk?: string; telegram?: string } {
   if (!data) return {};
   if (typeof data === 'object') return data;
-  try {
-    return JSON.parse(data);
-  } catch {
-    return {};
-  }
+  try { return JSON.parse(data); } catch { return {}; }
 }
 
 export const Footer: React.FC = memo(() => {
@@ -32,24 +28,17 @@ export const Footer: React.FC = memo(() => {
       className={cn(
         'w-full bg-[#1a1a1a] text-white',
         isTMA() ? 'pb-[80px]' : 'pb-[120px]',
-        'md:pb-8',
+        'md:pb-0',
       )}
     >
-      <div className='max-w-[1200px] mx-auto px-6 py-8 flex flex-col md:flex-row md:items-start gap-8'>
+      {/* Main content */}
+      <div className='max-w-[1200px] mx-auto px-6 pt-8 pb-6 flex flex-col md:flex-row md:items-start gap-8'>
 
-        {/* Left: Logo + copyright */}
+        {/* Left: Logo + social */}
         <div className='flex flex-col gap-4 md:max-w-[240px]'>
           <a href={ROUTES.HOME} className='inline-flex'>
             <LogoIcon className='h-12 w-auto brightness-0 invert' />
           </a>
-          <p className='text-xs text-gray-400 leading-relaxed'>
-            &copy;{new Date().getFullYear()} TEM.{' '}
-            <a href='/terms' className='hover:text-white transition'>Terms of Service</a>
-            {' • '}
-            <a href='/privacy' className='hover:text-white transition'>Privacy Policy</a>
-            {' • '}
-            <a href='/cookies' className='hover:text-white transition'>Cookie Policy</a>
-          </p>
 
           {/* Social icons */}
           <div className='flex gap-3 mt-2'>
@@ -97,6 +86,20 @@ export const Footer: React.FC = memo(() => {
               </a>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Bottom copyright bar */}
+      <div className='border-t border-white/10'>
+        <div className='max-w-[1200px] mx-auto px-6 py-3 flex items-center justify-center md:justify-start'>
+          <p className='text-xs text-gray-400 whitespace-nowrap'>
+            &copy;{new Date().getFullYear()} TEM.{' '}
+            <a href='/terms' className='hover:text-white transition'>Terms of Service</a>
+            {' • '}
+            <a href='/privacy' className='hover:text-white transition'>Privacy Policy</a>
+            {' • '}
+            <a href='/cookies' className='hover:text-white transition'>Cookie Policy</a>
+          </p>
         </div>
       </div>
     </div>

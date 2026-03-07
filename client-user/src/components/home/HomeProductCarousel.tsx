@@ -1,11 +1,11 @@
 'use client';
 
-import { FC, useState } from 'react';
+import { FC, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
 import 'swiper/css';
-import 'swiper/css/navigation';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { HomeProductCard } from './HomeProductCard';
 import type { HomeCategory, HomeProductCard as HomeProductCardType } from '@/api/home/types';
@@ -49,6 +49,9 @@ export const HomeProductCarousel: FC<Props> = ({ title, categories, fetchProduct
     ? `${ROUTES.CATALOG}/category/${activeCategory.slug}`
     : ROUTES.CATALOG;
 
+  const prevRef = useRef<HTMLButtonElement>(null);
+  const nextRef = useRef<HTMLButtonElement>(null);
+
   return (
     <div className='w-full'>
       {/* Title row */}
@@ -82,12 +85,24 @@ export const HomeProductCarousel: FC<Props> = ({ title, categories, fetchProduct
         </div>
       )}
 
-      {/* Carousel */}
+      {/* Carousel with outside arrows */}
       <div className='relative'>
+        <button
+          ref={prevRef}
+          className='hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-5 z-10 w-9 h-9 items-center justify-center bg-white rounded-full shadow border border-gray-200 hover:bg-gray-50 transition'
+          aria-label='Previous'
+        >
+          <ChevronLeft className='w-4 h-4 text-gray-700' />
+        </button>
+
         <Swiper
           modules={[Navigation]}
           breakpoints={homeCarouselBreakpoints}
-          navigation
+          navigation={{ prevEl: prevRef.current, nextEl: nextRef.current }}
+          onBeforeInit={swiper => {
+            (swiper.params.navigation as any).prevEl = prevRef.current;
+            (swiper.params.navigation as any).nextEl = nextRef.current;
+          }}
           loop={items.length >= 6}
           speed={400}
         >
@@ -101,6 +116,14 @@ export const HomeProductCarousel: FC<Props> = ({ title, categories, fetchProduct
             </SwiperSlide>
           ))}
         </Swiper>
+
+        <button
+          ref={nextRef}
+          className='hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-5 z-10 w-9 h-9 items-center justify-center bg-white rounded-full shadow border border-gray-200 hover:bg-gray-50 transition'
+          aria-label='Next'
+        >
+          <ChevronRight className='w-4 h-4 text-gray-700' />
+        </button>
       </div>
     </div>
   );

@@ -2,9 +2,8 @@
 
 import { FC } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Autoplay, Navigation } from 'swiper/modules';
+import { Autoplay } from 'swiper/modules';
 import 'swiper/css';
-import 'swiper/css/navigation';
 import { toImageSrc } from '@/utils/toImageSrc';
 import type { BannerContent } from '@/api/site-content/types';
 import { Link } from '@/components/Link/Link';
@@ -32,11 +31,10 @@ export const HomeBanner: FC<Props> = ({ content }) => {
   return (
     <div className='w-full'>
       <Swiper
-        modules={[Autoplay, Navigation]}
+        modules={[Autoplay]}
         autoplay={{ delay: 15000, disableOnInteraction: false }}
         loop={slides.length > 1}
         speed={600}
-        navigation
         className='w-full'
       >
         {slides.map((slide, i) => {
