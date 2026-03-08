@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Page } from '@/components/Page';
 import { Layout } from '@/components/Layout';
 import { getBusinessPageSlugByUserId, getBusinessPageBySlug } from '@/api/business-page/methods';
@@ -11,8 +11,11 @@ import { toImageSrc } from '@/utils/toImageSrc';
 import { ImageWithSkeleton } from '@/components/common/ImageWithSkeleton/ImageWithSkeleton';
 import { ProductCard } from '@/components/Catalog/ProductCard';
 import { ROUTES } from '@/config/routes';
-import { Phone, Mail, MapPin, UserIcon } from 'lucide-react';
+import { Phone, Mail, MapPin, UserIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Navigation } from 'swiper/modules';
+import 'swiper/css';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -131,22 +134,73 @@ function PhotoBannerRenderer({ block, photoSide }: {
   );
 }
 
+const showcaseBreakpoints = {
+  0:    { slidesPerView: 2.3, spaceBetween: 8 },
+  640:  { slidesPerView: 3,   spaceBetween: 12 },
+  1024: { slidesPerView: 5,   spaceBetween: 16 },
+};
+
 function ShowcaseRenderer({ block, sellerId }: { block: ShowcaseBlock; sellerId: string }) {
   const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const prevRef = useRef<HTMLButtonElement>(null);
+  const nextRef = useRef<HTMLButtonElement>(null);
+
   useEffect(() => {
-    getAvailableProducts({ sellerId, categoryId: block.categoryId ?? undefined, limit: 10 })
+    setLoading(true);
+    getAvailableProducts({ sellerId, categoryId: block.categoryId ?? undefined, limit: 12 })
       .then(r => setProducts(r ?? []))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [sellerId, block.categoryId]);
 
-  if (!products.length) return null;
+  const items = loading
+    ? Array.from({ length: 6 }).map((_, i) => ({ id: `sk-${i}` }) as any)
+    : products;
+
+  if (!loading && items.length === 0) return null;
+
   return (
     <div className='max-w-[1280px] mx-auto px-4 md:px-8 py-8'>
       {block.title && <h2 className='text-xl font-bold text-gray-900 mb-4'>{block.title}</h2>}
-      <div className='grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4'>
-        {products.map(p => (
-          <ProductCard key={p.id} product={p} href={`${ROUTES.CATALOG}/${p.id}`} />
-        ))}
+      <div className='relative'>
+        <button
+          ref={prevRef}
+          className='hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-5 z-10 w-9 h-9 items-center justify-center bg-white rounded-full shadow border border-gray-200 hover:bg-gray-50 transition'
+          aria-label='Previous'
+        >
+          <ChevronLeft className='w-4 h-4 text-gray-700' />
+        </button>
+
+        <Swiper
+          modules={[Navigation]}
+          breakpoints={showcaseBreakpoints}
+          navigation={{ prevEl: prevRef.current, nextEl: nextRef.current }}
+          onBeforeInit={swiper => {
+            (swiper.params.navigation as any).prevEl = prevRef.current;
+            (swiper.params.navigation as any).nextEl = nextRef.current;
+          }}
+          loop={items.length >= 5}
+          speed={400}
+        >
+          {items.map((p: any, i: number) => (
+            <SwiperSlide key={p.id || i}>
+              <ProductCard
+                product={loading ? undefined : p}
+                isLoading={loading}
+                href={loading ? '' : `${ROUTES.CATALOG}/${p.id}`}
+              />
+            </SwiperSlide>
+          ))}
+        </Swiper>
+
+        <button
+          ref={nextRef}
+          className='hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-5 z-10 w-9 h-9 items-center justify-center bg-white rounded-full shadow border border-gray-200 hover:bg-gray-50 transition'
+          aria-label='Next'
+        >
+          <ChevronRight className='w-4 h-4 text-gray-700' />
+        </button>
       </div>
     </div>
   );
