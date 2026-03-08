@@ -85,7 +85,7 @@ export function BusinessPageView({ userId, seller }: Props) {
 
 // ─── Block renderers ──────────────────────────────────────────────────────────
 
-function BlockRenderer({ block, sellerId }: { block: Block; sellerId: string }) {
+export function BlockRenderer({ block, sellerId }: { block: Block; sellerId: string }) {
   switch (block.type) {
     case 'text_banner': return <TextBannerRenderer block={block} />;
     case 'photo_left': return <PhotoBannerRenderer block={block} photoSide='left' />;

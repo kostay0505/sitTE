@@ -21,6 +21,7 @@ import {
   Store,
 } from 'lucide-react';
 import { BusinessPageEditor } from '@/components/business/BusinessPageEditor';
+import { BusinessPagePanel } from '@/components/business/BusinessPagePanel';
 import { TgIcon2 } from '@/components/common/SvgIcon';
 import { Switch } from '@/components/common/Switch/Switch';
 import { ROUTES } from '@/config/routes';
@@ -51,7 +52,7 @@ import { ChatList } from '@/components/chat/ChatList';
 import { extractTgIdFromToken } from '@/utils/tokenUtils';
 import { getTokens } from '@/api/auth/tokenStorage';
 
-type Panel = 'vitrine' | 'messages' | 'info' | 'favorites';
+type Panel = 'vitrine' | 'messages' | 'info' | 'favorites' | 'business';
 
 export default function ProfilePage() {
   const { data: me, status } = useUserData();
@@ -158,7 +159,6 @@ function DesktopLayout({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [jobOpen, setJobOpen] = useState(false);
   const [tgConfirmOpen, setTgConfirmOpen] = useState(false);
-  const [businessEditorOpen, setBusinessEditorOpen] = useState(false);
   const isBusinessUser = me?.role === 'shop' || me?.role === 'admin';
 
   const router = useRouter();
@@ -213,8 +213,13 @@ function DesktopLayout({
           {/* Бизнес-страница — только для shop/admin */}
           {isBusinessUser && (
             <button
-              onClick={() => setBusinessEditorOpen(true)}
-              className='w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition text-left'
+              onClick={() => setActivePanel('business')}
+              className={cn(
+                'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition text-left',
+                activePanel === 'business'
+                  ? 'bg-gray-900 text-white font-semibold'
+                  : 'text-gray-700 hover:bg-gray-100',
+              )}
             >
               <Store className='w-4 h-4' />
               Бизнес-страница
@@ -293,15 +298,15 @@ function DesktopLayout({
       </aside>
 
       {/* Main panel */}
-      <main className='flex-1 min-w-0 p-6'>
+      <main className={cn('flex-1 min-w-0', activePanel === 'business' ? 'p-4' : 'p-6')}>
         {activePanel === 'vitrine' && <VitrinePanel subscribed={subscribed} onToggleSubscribed={onToggleSubscribed} editPending={editPending} />}
         {activePanel === 'messages' && <MessagesPanel />}
         {activePanel === 'info' && <PersonalInfoPanel />}
         {activePanel === 'favorites' && <FavoritesPanel />}
+        {activePanel === 'business' && <BusinessPagePanel />}
       </main>
 
       <TgConfirmModal open={tgConfirmOpen} onClose={() => setTgConfirmOpen(false)} value={me?.url ?? ''} />
-      <BusinessPageEditor isOpen={businessEditorOpen} onClose={() => setBusinessEditorOpen(false)} />
     </div>
   );
 }
