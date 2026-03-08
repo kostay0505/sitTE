@@ -5,7 +5,7 @@ import { Page } from '@/components/Page';
 import { Layout } from '@/components/Layout';
 import { getBusinessPageSlugByUserId, getBusinessPageBySlug } from '@/api/business-page/methods';
 import { getAvailableProducts } from '@/api/products/methods';
-import type { BusinessPage, Block, ShowcaseBlock, PhotoCarouselBlock, ContactsBlock } from '@/api/business-page/types';
+import type { BusinessPage, Block, ShowcaseBlock, PhotoCarouselBlock, ContactsBlock, CatalogBlock } from '@/api/business-page/types';
 import type { UserBasic } from '@/api/user/types';
 import { toImageSrc } from '@/utils/toImageSrc';
 import { ImageWithSkeleton } from '@/components/common/ImageWithSkeleton/ImageWithSkeleton';
@@ -79,7 +79,7 @@ export function BusinessPageView({ userId, seller }: Props) {
       {/* Blocks */}
       <div className='space-y-0'>
         {page.blocks.map(block => (
-          <BlockRenderer key={block.id} block={block} sellerId={page.userId} />
+          <BlockRenderer key={block.id} block={block} sellerId={page.userId} slug={page.slug} />
         ))}
       </div>
     </>
@@ -88,7 +88,7 @@ export function BusinessPageView({ userId, seller }: Props) {
 
 // ─── Block renderers ──────────────────────────────────────────────────────────
 
-export function BlockRenderer({ block, sellerId }: { block: Block; sellerId: string }) {
+export function BlockRenderer({ block, sellerId, slug }: { block: Block; sellerId: string; slug?: string }) {
   switch (block.type) {
     case 'text_banner': return <TextBannerRenderer block={block} />;
     case 'photo_left': return <PhotoBannerRenderer block={block} photoSide='left' />;
@@ -96,6 +96,7 @@ export function BlockRenderer({ block, sellerId }: { block: Block; sellerId: str
     case 'showcase': return <ShowcaseRenderer block={block} sellerId={sellerId} />;
     case 'photo_carousel': return <PhotoCarouselRenderer block={block} />;
     case 'contacts': return <ContactsRenderer block={block} />;
+    case 'catalog': return <CatalogRenderer block={block} slug={slug} />;
     default: return null;
   }
 }
@@ -250,6 +251,36 @@ function ContactsRenderer({ block }: { block: ContactsBlock }) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function CatalogRenderer({ block, slug }: { block: CatalogBlock; slug?: string }) {
+  const href = slug ? `/shop/${slug}/catalog` : '#';
+  const textContent = (
+    <div className='flex-1 space-y-4 p-6 md:p-10 flex flex-col justify-center'>
+      {block.title && <h2 className='text-2xl md:text-3xl font-bold text-gray-900'>{block.title}</h2>}
+      {block.text && <p className='text-gray-600 leading-relaxed'>{block.text}</p>}
+      <div>
+        <a
+          href={href}
+          className='inline-block px-6 py-3 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-700 transition'
+        >
+          {block.buttonText || 'Смотреть каталог'}
+        </a>
+      </div>
+    </div>
+  );
+  const photoContent = block.photoUrl ? (
+    <div className='flex-1 min-h-[240px] md:min-h-[320px] bg-gray-100'>
+      <img src={toImageSrc(block.photoUrl)} alt='' className='w-full h-full object-cover' />
+    </div>
+  ) : <div className='flex-1 bg-gray-100' />;
+
+  return (
+    <div className='flex flex-col md:flex-row md:flex-row-reverse'>
+      {photoContent}
+      {textContent}
     </div>
   );
 }

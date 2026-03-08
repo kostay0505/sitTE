@@ -4,7 +4,8 @@ export type BlockType =
   | 'photo_right'
   | 'showcase'
   | 'photo_carousel'
-  | 'contacts';
+  | 'contacts'
+  | 'catalog';
 
 export interface TextBannerBlock {
   id: string;
@@ -51,13 +52,23 @@ export interface ContactsBlock {
   address: string;
 }
 
+export interface CatalogBlock {
+  id: string;
+  type: 'catalog';
+  title: string;
+  text: string;
+  photoUrl: string;
+  buttonText: string;
+}
+
 export type Block =
   | TextBannerBlock
   | PhotoLeftBlock
   | PhotoRightBlock
   | ShowcaseBlock
   | PhotoCarouselBlock
-  | ContactsBlock;
+  | ContactsBlock
+  | CatalogBlock;
 
 export interface BusinessPage {
   id: string;
@@ -92,5 +103,9 @@ export const BLOCK_TYPE_META: Record<BlockType, { label: string; description: st
   contacts: {
     label: 'Контакты',
     description: 'Телефон, email и адрес для связи',
+  },
+  catalog: {
+    label: 'Каталог',
+    description: 'Баннер с кнопкой перехода на каталог всех товаров',
   },
 };

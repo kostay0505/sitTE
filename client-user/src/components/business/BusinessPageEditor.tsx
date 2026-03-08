@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X, Plus, GripVertical, Pencil, Trash2, Check, ChevronLeft,
-  Type, ImageIcon, Store, Images, Phone, AlignLeft,
+  Type, ImageIcon, Store, Images, Phone, AlignLeft, BookOpen,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/utils/cn';
@@ -14,8 +14,7 @@ import { useCategoryFilterOptions } from '@/features/category/hooks';
 import type {
   Block, BlockType, BusinessPage,
   TextBannerBlock, PhotoLeftBlock, PhotoRightBlock,
-  ShowcaseBlock, PhotoCarouselBlock, ContactsBlock,
-  BLOCK_TYPE_META,
+  ShowcaseBlock, PhotoCarouselBlock, ContactsBlock, CatalogBlock,
 } from '@/api/business-page/types';
 import { BLOCK_TYPE_META as META } from '@/api/business-page/types';
 
@@ -30,6 +29,7 @@ function newBlock(type: BlockType): Block {
     case 'showcase': return { id, type, title: '', categoryId: null };
     case 'photo_carousel': return { id, type, title: '', items: [] };
     case 'contacts': return { id, type, phone: '', email: '', address: '' };
+    case 'catalog': return { id, type, title: '', text: '', photoUrl: '', buttonText: 'Смотреть каталог' };
   }
 }
 
@@ -40,6 +40,7 @@ const BLOCK_ICONS: Record<BlockType, React.ReactNode> = {
   showcase: <Store className='w-6 h-6' />,
   photo_carousel: <Images className='w-6 h-6' />,
   contacts: <Phone className='w-6 h-6' />,
+  catalog: <BookOpen className='w-6 h-6' />,
 };
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -311,7 +312,7 @@ function ListView({
 // ─── Block picker ─────────────────────────────────────────────────────────────
 
 function BlockPicker({ onSelect }: { onSelect: (type: BlockType) => void }) {
-  const types: BlockType[] = ['text_banner', 'photo_left', 'photo_right', 'showcase', 'photo_carousel', 'contacts'];
+  const types: BlockType[] = ['text_banner', 'photo_left', 'photo_right', 'showcase', 'photo_carousel', 'contacts', 'catalog'];
   return (
     <div className='p-6'>
       <p className='text-sm text-gray-500 mb-4'>Выберите тип блока</p>
@@ -494,6 +495,51 @@ function BlockEditForm({
             )}
           </div>
         </Field>
+      )}
+
+      {/* catalog fields */}
+      {block.type === 'catalog' && (
+        <>
+          <Field label='Текст'>
+            <textarea
+              value={(local as CatalogBlock).text ?? ''}
+              onChange={e => set('text', e.target.value)}
+              placeholder='Описание каталога...'
+              rows={3}
+              className='w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-gray-400 transition resize-none'
+            />
+          </Field>
+          <Field label='Текст кнопки'>
+            <input
+              type='text'
+              value={(local as CatalogBlock).buttonText ?? ''}
+              onChange={e => set('buttonText', e.target.value)}
+              placeholder='Смотреть каталог'
+              className='w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-gray-400 transition'
+            />
+          </Field>
+          <Field label='Фотография (справа)'>
+            <input ref={fileRef} type='file' accept='image/*' className='hidden'
+              onChange={e => e.target.files?.[0] && handlePhotoUpload(e.target.files[0])} />
+            {(local as CatalogBlock).photoUrl ? (
+              <div className='relative inline-block'>
+                <img src={toImageSrc((local as CatalogBlock).photoUrl)} alt='' className='h-32 w-auto rounded-xl object-cover border border-gray-200' />
+                <button onClick={() => set('photoUrl', '')} className='absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs'>
+                  <X className='w-3 h-3' />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className='w-full h-28 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-1 text-gray-400 hover:border-gray-400 transition text-sm'
+              >
+                <ImageIcon className='w-6 h-6' />
+                {uploading ? 'Загрузка...' : 'Нажмите для загрузки фото'}
+              </button>
+            )}
+          </Field>
+        </>
       )}
 
       {/* contacts fields */}
