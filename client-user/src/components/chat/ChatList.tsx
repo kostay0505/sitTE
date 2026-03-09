@@ -36,16 +36,24 @@ export function ChatList({ chats, currentUserId }: ChatListProps) {
   return (
     <div className="divide-y divide-gray-100">
       {chats.map((chat) => {
+        const isAdmin = !!chat.isAdminChat;
         const isBuyer = chat.buyerId === currentUserId;
         const unread = isBuyer ? chat.unreadBuyer : chat.unreadSeller;
-        const otherName = isBuyer
+
+        const otherName = isAdmin
+          ? 'Touring Expert Support'
+          : isBuyer
           ? chat.sellerFirstName || chat.sellerUsername || 'Продавец'
           : chat.buyerFirstName || chat.buyerUsername || 'Покупатель';
-        const otherPhoto = isBuyer ? chat.sellerPhoto : chat.buyerPhoto;
-        const time = new Date(chat.lastMessageAt).toLocaleDateString('ru-RU', {
-          day: 'numeric',
-          month: 'short',
-        });
+
+        const otherPhoto = isAdmin ? null : isBuyer ? chat.sellerPhoto : chat.buyerPhoto;
+
+        const time = chat.lastMessageAt
+          ? new Date(chat.lastMessageAt).toLocaleDateString('ru-RU', {
+              day: 'numeric',
+              month: 'short',
+            })
+          : '';
 
         return (
           <Link
@@ -54,7 +62,11 @@ export function ChatList({ chats, currentUserId }: ChatListProps) {
             className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
           >
             <div className="relative flex-shrink-0">
-              {otherPhoto ? (
+              {isAdmin ? (
+                <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center text-white font-bold text-xs text-center leading-tight px-1">
+                  TE
+                </div>
+              ) : otherPhoto ? (
                 <img
                   src={toImageSrc(otherPhoto)}
                   alt={otherName}
@@ -73,16 +85,20 @@ export function ChatList({ chats, currentUserId }: ChatListProps) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <p className="font-medium text-gray-900 truncate">
+                <p className={`font-medium truncate ${isAdmin ? 'text-black' : 'text-gray-900'}`}>
                   {otherName}
                 </p>
                 <span className="text-xs text-gray-400 flex-shrink-0 ml-2">
                   {time}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 truncate">
-                {chat.productName}
-              </p>
+              {isAdmin ? (
+                <p className="text-xs text-gray-400 truncate">Служба поддержки</p>
+              ) : (
+                <p className="text-xs text-gray-500 truncate">
+                  {chat.productName}
+                </p>
+              )}
               {chat.lastMessage && (
                 <p className="text-sm text-gray-500 truncate mt-0.5">
                   {chat.lastMessage}

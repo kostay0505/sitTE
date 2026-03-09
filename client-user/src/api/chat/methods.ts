@@ -2,13 +2,14 @@ import { api } from '@/api/api';
 
 export interface Chat {
   id: string;
-  productId: string;
+  productId: string | null;
   buyerId: string;
   sellerId: string;
   unreadBuyer: number;
   unreadSeller: number;
   lastMessageAt: string;
   createdAt: string;
+  isAdminChat?: boolean;
   productName?: string;
   productPreview?: string;
   buyerFirstName?: string;
@@ -37,6 +38,11 @@ export interface PaginatedResult<T> {
 
 export async function getOrCreateChat(productId: string): Promise<Chat> {
   const { data } = await api.post<Chat>('/chat', { productId });
+  return data;
+}
+
+export async function getOrCreateAdminChat(): Promise<Chat> {
+  const { data } = await api.post<Chat>('/chat/admin');
   return data;
 }
 

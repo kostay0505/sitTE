@@ -1,7 +1,7 @@
 'use client';
-import { useMemo } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getChatList } from '@/api/chat/methods';
+import { getChatList, getOrCreateAdminChat } from '@/api/chat/methods';
 import { useAuthStore } from '@/stores/authStore';
 import { extractTgIdFromToken } from '@/utils/tokenUtils';
 import { getTokens } from '@/api/auth/tokenStorage';
@@ -10,6 +10,15 @@ export const CHAT_LIST_KEY = ['chatList'];
 
 export function useChatList() {
   const isAuthorized = useAuthStore((s) => s.isAuthorized);
+  const adminChatEnsured = useRef(false);
+
+  // Ensure admin chat exists once on mount when authorized
+  useEffect(() => {
+    if (isAuthorized && !adminChatEnsured.current) {
+      adminChatEnsured.current = true;
+      getOrCreateAdminChat().catch(() => {});
+    }
+  }, [isAuthorized]);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: CHAT_LIST_KEY,
