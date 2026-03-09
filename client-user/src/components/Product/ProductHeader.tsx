@@ -11,6 +11,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { ContactModal } from './ContactModal';
 import { ROUTES } from '@/config/routes';
 import { Link } from '@/components/Link/Link';
+import { useAuthStore } from '@/stores/authStore';
 
 interface Props {
   product?: Product;
@@ -56,6 +57,8 @@ export const ProductHeader: FC<Props> = ({
 }) => {
   const [qty, setQty] = useState(1);
   const [contactOpen, setContactOpen] = useState(false);
+  const isAuthorized = useAuthStore(s => s.isAuthorized);
+  const setAuthMode = useAuthStore(s => s.setAuthMode);
 
   const maxQty = useMemo(
     () => Math.max(1, Number(product?.quantity ?? 1)),
@@ -155,7 +158,13 @@ export const ProductHeader: FC<Props> = ({
       {!isLoading && (
         <button
           type='button'
-          onClick={() => setContactOpen(true)}
+          onClick={() => {
+            if (!isAuthorized) {
+              setAuthMode('login');
+              return;
+            }
+            setContactOpen(true);
+          }}
           className='w-full bg-black text-white font-semibold py-3 rounded text-sm hover:bg-black/80 transition mb-2'
         >
           Add to cart{priceCash > 0 ? ` - ${formatCurrencyNumber(totalNonCash)}${sym}` : ''}
