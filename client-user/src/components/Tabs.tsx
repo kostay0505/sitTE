@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/utils/cn';
 import { CategoryNav } from '@/components/home/CategoryNav';
 import { TgIcon2, LogoIcon } from './common/SvgIcon';
-import { Briefcase, DoorOpen, Globe, LayoutGrid, MessageCircle, Search, UserRound } from 'lucide-react';
+import { Bell, Briefcase, DoorOpen, Globe, LayoutGrid, MessageCircle, Search, ShoppingCart, UserRound } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 import { TG_LINK } from '@/config/constants';
 import { LoginModal } from '@/components/Auth/LoginModal';
@@ -100,29 +100,41 @@ function DesktopHeader() {
       {/* 50px gap between search and nav */}
       <div className='w-[50px] shrink-0' />
 
-      {/* Right nav — 40px between all items */}
+      {/* Right nav */}
       <div className='flex items-center gap-[40px] shrink-0'>
         <button className='flex items-center gap-1 text-sm text-gray-600 hover:text-black transition'>
           <Globe className='w-4 h-4' />
           <span>RU</span>
         </button>
 
-        <a href='/sell-on-tem' className='text-sm text-gray-700 hover:text-black transition whitespace-nowrap'>
-          Sell on TEM
-        </a>
-
         <a href='/blog' className='text-sm text-gray-700 hover:text-black transition'>
           Blog
         </a>
 
         {isAuthorized ? (
-          <button
-            onClick={() => router.push(ROUTES.PROFILE)}
-            className='flex items-center gap-1 text-sm text-gray-700 hover:text-black transition'
-          >
-            <UserRound className='w-4 h-4' />
-            <span>Профиль</span>
-          </button>
+          <>
+            <button
+              className='relative text-gray-700 hover:text-black transition'
+              aria-label='Уведомления'
+            >
+              <Bell className='w-5 h-5' />
+            </button>
+
+            <button
+              onClick={() => router.push(ROUTES.PROFILE)}
+              className='text-gray-700 hover:text-black transition'
+              aria-label='Личный кабинет'
+            >
+              <UserRound className='w-5 h-5' />
+            </button>
+
+            <button
+              className='text-gray-700 hover:text-black transition'
+              aria-label='Корзина'
+            >
+              <ShoppingCart className='w-5 h-5' />
+            </button>
+          </>
         ) : (
           <>
             <button
