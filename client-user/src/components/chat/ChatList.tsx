@@ -1,14 +1,17 @@
 'use client';
-import Link from 'next/link';
 import type { Chat } from '@/api/chat/methods';
 import { toImageSrc } from '@/utils/toImageSrc';
+import Link from 'next/link';
+import { cn } from '@/utils/cn';
 
 interface ChatListProps {
   chats: Chat[];
   currentUserId: string;
+  onSelect?: (chatId: string) => void;
+  selectedChatId?: string | null;
 }
 
-export function ChatList({ chats, currentUserId }: ChatListProps) {
+export function ChatList({ chats, currentUserId, onSelect, selectedChatId }: ChatListProps) {
   if (chats.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-gray-400">
@@ -55,12 +58,10 @@ export function ChatList({ chats, currentUserId }: ChatListProps) {
             })
           : '';
 
-        return (
-          <Link
-            key={chat.id}
-            href={`/chats/${chat.id}`}
-            className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
-          >
+        const isSelected = selectedChatId === chat.id;
+
+        const inner = (
+          <>
             <div className="relative flex-shrink-0">
               {isAdmin ? (
                 <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center text-white font-bold text-xs text-center leading-tight px-1">
@@ -105,6 +106,25 @@ export function ChatList({ chats, currentUserId }: ChatListProps) {
                 </p>
               )}
             </div>
+          </>
+        );
+
+        const className = cn(
+          'flex items-center gap-3 px-4 py-3 transition-colors w-full text-left',
+          isSelected ? 'bg-gray-100' : 'hover:bg-gray-50',
+        );
+
+        if (onSelect) {
+          return (
+            <button key={chat.id} onClick={() => onSelect(chat.id)} className={className}>
+              {inner}
+            </button>
+          );
+        }
+
+        return (
+          <Link key={chat.id} href={`/chats/${chat.id}`} className={className}>
+            {inner}
           </Link>
         );
       })}

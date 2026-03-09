@@ -25,6 +25,7 @@ interface Props {
   showPosting?: boolean;
   onDelete?: (id: string) => void;
   onPosting?: (product: ProductBasic) => void;
+  onCardClick?: () => void;
 }
 
 export const ProductCard: FC<Props> = ({
@@ -39,6 +40,7 @@ export const ProductCard: FC<Props> = ({
   showPosting = false,
   onDelete,
   onPosting,
+  onCardClick,
 }) => {
   const normalizedStatus = useMemo(() => {
     const s = (product?.status || '').toLowerCase();
@@ -72,11 +74,12 @@ export const ProductCard: FC<Props> = ({
   return (
     <Link
       href={href}
+      onClick={onCardClick ? (e) => { e.preventDefault(); onCardClick(); } : undefined}
       className={cn(
         'relative flex flex-col justify-between h-full bg-white rounded-xl shadow-md transition hover:shadow-lg',
         'max-h-[199px] md:max-h-[436px]',
         'p-4 rounded-xl',
-        !href && 'pointer-events-none',
+        !href && !onCardClick && 'pointer-events-none',
         'md:bg-[#F5F5FA] md:shadow-none md:hover:shadow-none',
       )}
     >

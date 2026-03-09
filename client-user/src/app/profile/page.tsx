@@ -19,6 +19,7 @@ import {
   LogOut,
   Search,
   Store,
+  ArrowLeft,
 } from 'lucide-react';
 import { BusinessPageEditor } from '@/components/business/BusinessPageEditor';
 import { BusinessPagePanel } from '@/components/business/BusinessPagePanel';
@@ -32,7 +33,14 @@ import { ImageWithSkeleton } from '@/components/common/ImageWithSkeleton/ImageWi
 import { cn } from '@/utils/cn';
 
 import { useUserData, useEditUser } from '@/features/users/hooks';
-import { useMyProducts, useDeleteProduct, useInfiniteProductsFlat } from '@/features/products/hooks';
+import {
+  useMyProducts,
+  useDeleteProduct,
+  useInfiniteProductsFlat,
+  useCreateProduct,
+  useProduct,
+  useUpdateProduct,
+} from '@/features/products/hooks';
 import { toImageSrc } from '@/utils/toImageSrc';
 import { Link } from '@/components/Link/Link';
 import { UserDataResponse } from '@/api/user/types';
@@ -45,14 +53,34 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ProductCard } from '@/components/Catalog/ProductCard';
 import { toast } from 'sonner';
 import { formatPrice } from '@/utils/currency';
-import type { ProductBasic, StatusType } from '@/api/products/types';
+import type { ProductBasic, StatusType, CreateProductRequest, UpdateProductRequest } from '@/api/products/types';
 import { PersonalInfoPanel } from './PersonalInfoPanel';
 import { useChatList } from '@/hooks/useChatList';
 import { ChatList } from '@/components/chat/ChatList';
+import { ChatWindow } from '@/components/chat/ChatWindow';
 import { extractTgIdFromToken } from '@/utils/tokenUtils';
 import { getTokens } from '@/api/auth/tokenStorage';
+import { useChat } from '@/hooks/useChat';
+import type { Chat } from '@/api/chat/methods';
+import { uploadFile } from '@/api/files/methods';
+import { resolveCategoryId } from '@/utils/category';
+import {
+  AdvertisementForm,
+  type AdvertisementFormValues,
+} from '@/components/Advertisements/AdvertisementForm';
 
-type Panel = 'vitrine' | 'messages' | 'info' | 'favorites' | 'business';
+type Panel =
+  | 'vitrine'
+  | 'messages'
+  | 'info'
+  | 'favorites'
+  | 'business'
+  | 'create'
+  | 'edit'
+  | 'vacancy-my'
+  | 'vacancy-create'
+  | 'resume-my'
+  | 'resume-create';
 
 export default function ProfilePage() {
   const { data: me, status } = useUserData();
@@ -156,6 +184,7 @@ function DesktopLayout({
   editPending: boolean;
 }) {
   const [activePanel, setActivePanel] = useState<Panel>('vitrine');
+  const [editProductId, setEditProductId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [jobOpen, setJobOpen] = useState(false);
   const [tgConfirmOpen, setTgConfirmOpen] = useState(false);
@@ -179,6 +208,9 @@ function DesktopLayout({
     { id: 'favorites' as Panel, icon: <Heart className='w-4 h-4' />, label: 'Избранное' },
   ];
 
+  const jobPanels: Panel[] = ['vacancy-my', 'vacancy-create', 'resume-my', 'resume-create'];
+  const isJobPanel = jobPanels.includes(activePanel);
+
   return (
     <div className='flex w-full'>
       {/* Sidebar */}
@@ -201,14 +233,19 @@ function DesktopLayout({
             </button>
           ))}
 
-          {/* Создать — navigates */}
-          <Link
-            href={ROUTES.CREATE_ADVERTISEMENT}
-            className='w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition'
+          {/* Создать — opens inline panel */}
+          <button
+            onClick={() => setActivePanel('create')}
+            className={cn(
+              'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition text-left',
+              activePanel === 'create'
+                ? 'bg-gray-900 text-white font-semibold'
+                : 'text-gray-700 hover:bg-gray-100',
+            )}
           >
             <PlusSquare className='w-4 h-4' />
             Создать
-          </Link>
+          </button>
 
           {/* Бизнес-страница — только для shop/admin */}
           {isBusinessUser && (
@@ -229,24 +266,36 @@ function DesktopLayout({
           {/* Работа accordion */}
           <button
             onClick={() => setJobOpen(p => !p)}
-            className='w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition'
+            className={cn(
+              'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm transition',
+              isJobPanel ? 'bg-gray-900 text-white font-semibold' : 'text-gray-700 hover:bg-gray-100',
+            )}
           >
             <span className='flex items-center gap-2.5'><Briefcase className='w-4 h-4' />Работа</span>
-            <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform flex-shrink-0', jobOpen && 'rotate-180')} />
+            <ChevronDown className={cn('w-3 h-3 flex-shrink-0 transition-transform', (jobOpen || isJobPanel) && 'rotate-180', isJobPanel ? 'text-white/70' : 'text-gray-400')} />
           </button>
           <AnimatePresence>
-            {jobOpen && (
+            {(jobOpen || isJobPanel) && (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className='overflow-hidden'>
                 <div className='pl-2 space-y-0.5'>
-                  {[
-                    { label: 'Мои вакансии', href: ROUTES.MY_VACANCY },
-                    { label: 'Создать вакансию', href: ROUTES.CREATE_VACANCY },
-                    { label: 'Мои резюме', href: ROUTES.MY_RESUME },
-                    { label: 'Создать резюме', href: ROUTES.CREATE_RESUME },
-                  ].map(sub => (
-                    <Link key={sub.href} href={sub.href} className='flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-gray-100 transition'>
+                  {([
+                    { label: 'Мои вакансии', panel: 'vacancy-my' as Panel },
+                    { label: 'Создать вакансию', panel: 'vacancy-create' as Panel },
+                    { label: 'Мои резюме', panel: 'resume-my' as Panel },
+                    { label: 'Создать резюме', panel: 'resume-create' as Panel },
+                  ]).map(sub => (
+                    <button
+                      key={sub.panel}
+                      onClick={() => setActivePanel(sub.panel)}
+                      className={cn(
+                        'w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition text-left',
+                        activePanel === sub.panel
+                          ? 'bg-gray-200 text-gray-900 font-medium'
+                          : 'text-gray-600 hover:bg-gray-100',
+                      )}
+                    >
                       <Pencil className='w-3 h-3' />{sub.label}
-                    </Link>
+                    </button>
                   ))}
                 </div>
               </motion.div>
@@ -298,12 +347,28 @@ function DesktopLayout({
       </aside>
 
       {/* Main panel */}
-      <main className={cn('flex-1 min-w-0', activePanel === 'business' ? 'p-4' : 'p-6')}>
-        {activePanel === 'vitrine' && <VitrinePanel subscribed={subscribed} onToggleSubscribed={onToggleSubscribed} editPending={editPending} />}
+      <main className={cn(
+        'flex-1 min-w-0 overflow-y-auto',
+        activePanel === 'business' ? 'p-4' : 'p-6',
+        activePanel === 'messages' && 'overflow-hidden p-4',
+      )}>
+        {activePanel === 'vitrine' && (
+          <VitrinePanel
+            subscribed={subscribed}
+            onToggleSubscribed={onToggleSubscribed}
+            editPending={editPending}
+            onEditProduct={(id) => { setEditProductId(id); setActivePanel('edit'); }}
+          />
+        )}
         {activePanel === 'messages' && <MessagesPanel />}
         {activePanel === 'info' && <PersonalInfoPanel />}
         {activePanel === 'favorites' && <FavoritesPanel />}
         {activePanel === 'business' && <BusinessPagePanel />}
+        {activePanel === 'create' && <CreateAdPanel onBack={() => setActivePanel('vitrine')} />}
+        {activePanel === 'edit' && editProductId && (
+          <EditAdPanel productId={editProductId} onBack={() => setActivePanel('vitrine')} />
+        )}
+        {isJobPanel && <PlaceholderPanel panel={activePanel} />}
       </main>
 
       <TgConfirmModal open={tgConfirmOpen} onClose={() => setTgConfirmOpen(false)} value={me?.url ?? ''} />
@@ -315,8 +380,11 @@ function DesktopLayout({
 // Panel: Витрина
 // ─────────────────────────────────────────────
 
-function VitrinePanel({ subscribed, onToggleSubscribed, editPending }: {
-  subscribed: boolean; onToggleSubscribed: (v: boolean) => void; editPending: boolean;
+function VitrinePanel({ subscribed, onToggleSubscribed, editPending, onEditProduct }: {
+  subscribed: boolean;
+  onToggleSubscribed: (v: boolean) => void;
+  editPending: boolean;
+  onEditProduct: (id: string) => void;
 }) {
   const { data: products, status } = useMyProducts();
   const del = useDeleteProduct();
@@ -409,7 +477,7 @@ function VitrinePanel({ subscribed, onToggleSubscribed, editPending }: {
               onDelete={handleDelete}
               showPosting
               onPosting={handlePosting}
-              href={`${ROUTES.EDIT_ADVERTISEMENT}/${product.id}`}
+              onCardClick={() => onEditProduct(product.id)}
               showStatus
             />
           ))}
@@ -420,11 +488,12 @@ function VitrinePanel({ subscribed, onToggleSubscribed, editPending }: {
 }
 
 // ─────────────────────────────────────────────
-// Panel: Сообщения
+// Panel: Сообщения (split-view)
 // ─────────────────────────────────────────────
 
 function MessagesPanel() {
   const { chats, isLoading } = useChatList();
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState('');
 
   useEffect(() => {
@@ -435,18 +504,81 @@ function MessagesPanel() {
     }
   }, []);
 
+  const selectedChat = chats.find(c => c.id === selectedChatId) ?? null;
+
   return (
-    <div className='max-w-2xl'>
-      <h2 className='text-lg font-semibold mb-4'>Сообщения</h2>
-      {isLoading ? (
-        <div className='flex justify-center py-16'>
-          <div className='w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin' />
+    <div className='flex gap-4' style={{ height: 'calc(100vh - 200px)', minHeight: 400 }}>
+      {/* Left: chat list */}
+      <div className='w-72 flex-shrink-0 bg-white rounded-2xl shadow-sm flex flex-col overflow-hidden'>
+        <div className='px-4 py-3 border-b border-gray-100'>
+          <h2 className='text-base font-semibold'>Сообщения</h2>
         </div>
-      ) : (
-        <div className='bg-white rounded-2xl shadow-sm overflow-hidden'>
-          <ChatList chats={chats} currentUserId={currentUserId} />
+        <div className='flex-1 overflow-y-auto'>
+          {isLoading ? (
+            <div className='flex justify-center py-8'>
+              <div className='w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin' />
+            </div>
+          ) : (
+            <ChatList
+              chats={chats}
+              currentUserId={currentUserId}
+              onSelect={setSelectedChatId}
+              selectedChatId={selectedChatId}
+            />
+          )}
         </div>
-      )}
+      </div>
+
+      {/* Right: chat view */}
+      <div className='flex-1 min-w-0 bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col'>
+        {selectedChatId ? (
+          <InlineChatView chatId={selectedChatId} currentUserId={currentUserId} chat={selectedChat} />
+        ) : (
+          <div className='flex flex-col items-center justify-center h-full text-gray-400'>
+            <MessageSquare className='w-12 h-12 mb-3 opacity-20' />
+            <p>Выберите чат слева</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function InlineChatView({ chatId, currentUserId, chat }: {
+  chatId: string;
+  currentUserId: string;
+  chat: Chat | null;
+}) {
+  const { messages, sendMessage, deleteMessage, isSending, hasMore, loadMore, isFetchingNextPage } = useChat(chatId);
+
+  const isAdmin = !!chat?.isAdminChat;
+  const isBuyer = chat?.buyerId === currentUserId;
+  const otherName = isAdmin
+    ? 'Touring Expert Support'
+    : isBuyer
+    ? chat?.sellerFirstName || chat?.sellerUsername || 'Продавец'
+    : chat?.buyerFirstName || chat?.buyerUsername || 'Покупатель';
+  const subtitle = isAdmin ? 'Служба поддержки' : chat?.productName || '';
+
+  return (
+    <div className='flex flex-col h-full'>
+      <div className='px-4 py-3 border-b border-gray-100 flex items-center gap-3 flex-shrink-0'>
+        <div className='font-medium text-sm'>{otherName}</div>
+        {subtitle && <div className='text-xs text-gray-400'>{subtitle}</div>}
+      </div>
+      <div className='flex-1 min-h-0'>
+        <ChatWindow
+          chat={chat}
+          messages={messages}
+          currentUserId={currentUserId}
+          isSending={isSending}
+          onSend={sendMessage}
+          onDeleteMessage={deleteMessage}
+          hasMore={hasMore}
+          onLoadMore={loadMore}
+          isFetchingMore={isFetchingNextPage}
+        />
+      </div>
     </div>
   );
 }
@@ -480,6 +612,202 @@ function FavoritesPanel() {
         </div>
       )}
     </>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Panel: Создать объявление
+// ─────────────────────────────────────────────
+
+function CreateAdPanel({ onBack }: { onBack: () => void }) {
+  const create = useCreateProduct();
+
+  const uploadSingle = async (file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    const { filename } = await uploadFile(fd);
+    return filename;
+  };
+
+  const handleCreate = async (
+    form: AdvertisementFormValues & { files: File[]; previewFile: File | null },
+  ): Promise<boolean> => {
+    try {
+      if (!form.previewFile) { toast.error('Добавьте обложку (превью)'); return false; }
+      const preview = await uploadSingle(form.previewFile);
+      const uploaded = await Promise.all((form.files ?? []).map(uploadSingle));
+      const body: CreateProductRequest = {
+        name: form.title,
+        description: form.description,
+        priceCash: Number(form.priceCash) || 0,
+        priceNonCash: Number(form.priceNonCash) || 0,
+        currency: form.currency as any,
+        categoryId: resolveCategoryId(form.categoryId, form.subcategoryId),
+        brandId: form.brandId,
+        quantity: Number(form.quantity) || 1,
+        quantityType: form.unit === 'set' ? 'set' : 'piece',
+        preview,
+        files: uploaded,
+      };
+      await create.mutateAsync(body);
+      toast.success('Объявление создано и отправлено на модерацию');
+      onBack();
+      return true;
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Не удалось создать объявление');
+      return false;
+    }
+  };
+
+  return (
+    <div>
+      <button
+        onClick={onBack}
+        className='flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 mb-4 transition'
+      >
+        <ArrowLeft className='w-4 h-4' /> Назад к витрине
+      </button>
+      <h2 className='text-lg font-semibold mb-4'>Создать объявление</h2>
+      <AdvertisementForm
+        mode='create'
+        onSubmit={handleCreate}
+        submitLabel={create.isPending ? 'Создание…' : 'Создать'}
+        loading={create.isPending}
+      />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Panel: Редактировать объявление
+// ─────────────────────────────────────────────
+
+function EditAdPanel({ productId, onBack }: { productId: string; onBack: () => void }) {
+  const { data: product, status } = useProduct(productId);
+  const update = useUpdateProduct();
+  const isLoading = status === 'pending';
+
+  const initialValues = useMemo<Partial<AdvertisementFormValues> | undefined>(() => {
+    if (!product) return undefined;
+    return {
+      title: product.name,
+      description: product.description,
+      priceCash: Number(product.priceCash ?? 0),
+      priceNonCash: Number(product.priceNonCash ?? 0),
+      currency: String(product.currency),
+      categoryId: product.category?.id ?? '',
+      subcategoryId: '',
+      brandId: product.brand?.id ?? '',
+      quantity: product.quantity ?? 1,
+      unit: product.quantityType ?? 'piece',
+    };
+  }, [product]);
+
+  const initialPreviewUrl = useMemo(
+    () => (product?.preview ? toImageSrc(product.preview) : null),
+    [product?.preview],
+  );
+
+  const initialFileNames = useMemo(
+    () => (Array.isArray(product?.files) ? (product!.files as string[]) : []),
+    [product],
+  );
+
+  const uploadSingle = async (file: File): Promise<string> => {
+    const fd = new FormData();
+    fd.append('file', file);
+    const { filename } = await uploadFile(fd);
+    return filename;
+  };
+
+  const handleEdit = async (
+    form: AdvertisementFormValues & { files: File[]; previewFile: File | null; keepFileNames: string[] },
+  ): Promise<boolean> => {
+    if (!product || !productId) return false;
+    try {
+      const uploaded = await Promise.all((form.files ?? []).map(uploadSingle));
+      const files = Array.from(new Set([...form.keepFileNames, ...uploaded]));
+      const preview = form.previewFile ? await uploadSingle(form.previewFile) : product.preview;
+      if (!preview) { toast.error('Добавьте обложку (превью)'); return false; }
+      const body: UpdateProductRequest = {
+        name: form.title,
+        description: form.description,
+        priceCash: Number(form.priceCash) || 0,
+        priceNonCash:
+          typeof form.priceNonCash === 'number'
+            ? form.priceNonCash
+            : Number(form.priceNonCash ?? 0) || 0,
+        currency: form.currency as any,
+        categoryId: resolveCategoryId(form.categoryId || product.category?.id, form.subcategoryId),
+        brandId: form.brandId || product.brand?.id || '',
+        preview,
+        files,
+        quantity: Number(form.quantity) || 1,
+        quantityType: form.unit === 'set' ? 'set' : 'piece',
+      };
+      const ok = await update.mutateAsync({ id: productId, body });
+      if (ok) { toast.success('Объявление обновлено'); onBack(); return true; }
+      toast.error('Не удалось обновить объявление');
+      return false;
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Ошибка при обновлении объявления');
+      return false;
+    }
+  };
+
+  if (status === 'error') {
+    return (
+      <div>
+        <button onClick={onBack} className='flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 mb-4 transition'>
+          <ArrowLeft className='w-4 h-4' /> Назад к витрине
+        </button>
+        <div className='text-red-500'>Не удалось загрузить объявление</div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <button
+        onClick={onBack}
+        className='flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 mb-4 transition'
+      >
+        <ArrowLeft className='w-4 h-4' /> Назад к витрине
+      </button>
+      <h2 className='text-lg font-semibold mb-4'>Редактировать объявление</h2>
+      <AdvertisementForm
+        productId={product?.id}
+        initialValues={initialValues}
+        initialPreviewUrl={initialPreviewUrl}
+        initialFileNames={initialFileNames}
+        submitLabel={update.isPending ? 'Сохранение…' : 'Сохранить'}
+        loading={isLoading}
+        onSubmit={handleEdit}
+        mode='edit'
+        maxFiles={5}
+        isActive={product?.isActive}
+      />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Panel: Placeholder (вакансии/резюме)
+// ─────────────────────────────────────────────
+
+function PlaceholderPanel({ panel }: { panel: Panel }) {
+  const labels: Partial<Record<Panel, string>> = {
+    'vacancy-my': 'Мои вакансии',
+    'vacancy-create': 'Создать вакансию',
+    'resume-my': 'Мои резюме',
+    'resume-create': 'Создать резюме',
+  };
+  return (
+    <div className='flex flex-col items-center justify-center py-32 text-gray-400'>
+      <div className='text-5xl mb-4'>🚧</div>
+      <div className='text-lg font-medium mb-1 text-gray-600'>{labels[panel]}</div>
+      <div className='text-sm'>Раздел в разработке</div>
+    </div>
   );
 }
 
