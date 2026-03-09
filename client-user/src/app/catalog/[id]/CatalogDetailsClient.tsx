@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { Page } from '@/components/Page';
 import { Layout } from '@/components/Layout';
 import { ProductImageGallery } from '@/components/Product/ProductImageGallery';
@@ -21,6 +21,7 @@ import { extractTgIdFromToken } from '@/utils/tokenUtils';
 import { ImageWithSkeleton } from '@/components/common/ImageWithSkeleton/ImageWithSkeleton';
 import { ROUTES } from '@/config/routes';
 import { Link } from '@/components/Link/Link';
+import { ChatWidget } from '@/components/chat/ChatWidget';
 
 function mapMediaFiles(p?: Product): { url: string; type: 'image' | 'video' }[] {
   if (!p) return [];
@@ -67,9 +68,11 @@ function getSellerName(user?: Product['user']): string {
 
 export function CatalogDetailsClient() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const [shareOpen, setShareOpen] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
+  const [widgetOpen, setWidgetOpen] = useState(false);
+  const [widgetChatId, setWidgetChatId] = useState<string | null>(null);
+
   const { data: product, status } = useProduct(id);
   const isLoading = status === 'pending';
   const isAuthorized = useAuthStore(s => s.isAuthorized);
@@ -93,7 +96,6 @@ export function CatalogDetailsClient() {
     }
   }, [product?.id]);
 
-  // Fetch seller products for count
   const { data: sellerProducts = [] } = useQuery({
     queryKey: ['seller-count', sellerTgId],
     queryFn: () => getAvailableProducts({ sellerId: sellerTgId!, limit: 200 }),
@@ -106,7 +108,8 @@ export function CatalogDetailsClient() {
     try {
       setChatLoading(true);
       const chat = await getOrCreateChat(product.id);
-      router.push('/chats/' + chat.id);
+      setWidgetChatId(chat.id);
+      setWidgetOpen(true);
     } catch (err) {
       console.error('Chat error:', err);
     } finally {
@@ -137,7 +140,6 @@ export function CatalogDetailsClient() {
         {sellerName.charAt(0).toUpperCase()}
       </div>
     );
-
 
   return (
     <Page back={true}>
@@ -260,6 +262,12 @@ export function CatalogDetailsClient() {
         open={shareOpen}
         onClose={() => setShareOpen(false)}
         url={`${product?.url}`}
+      />
+
+      <ChatWidget
+        isOpen={widgetOpen}
+        onClose={() => setWidgetOpen(false)}
+        initialChatId={widgetChatId}
       />
     </Page>
   );
