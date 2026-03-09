@@ -56,8 +56,6 @@ export function CategoryPageClient({
         <nav className='flex items-center gap-1 text-xs text-gray-500 flex-wrap'>
           <Link href='/' className='hover:text-black'>Главная</Link>
           <span>/</span>
-          <Link href='/catalog' className='hover:text-black'>Каталог</Link>
-          <span>/</span>
           {subcategoryId && parentCategoryName ? (
             <>
               <Link href={`/catalog/category/${categorySlug}`} className='hover:text-black'>
