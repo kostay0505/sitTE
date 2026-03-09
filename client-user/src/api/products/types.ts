@@ -63,6 +63,7 @@ export type ProductsAvailableQuery = {
   priceCashFrom?: number | null;
   priceCashTo?: number | null;
   isFavorite?: boolean | null;
+  search?: string | null;
   limit?: number;
   offset?: number;
 };

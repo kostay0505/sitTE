@@ -8,7 +8,8 @@ import { useInfiniteProductsFlat } from '@/features/products/hooks';
 import type { ProductsAvailableQuery } from '@/api/products/types';
 import { ROUTES } from '@/config/routes';
 import { Link } from '@/components/Link/Link';
-import { Input } from '@/components/common/Input/Input';
+import { Search } from 'lucide-react';
+import { useDebounce } from '@/hooks/useDebounce';
 
 type SubcategoryLink = {
   id: string;
@@ -33,17 +34,16 @@ export function CategoryPageClient({
   parentCategoryName,
   subcategories = [],
 }: CategoryPageClientProps) {
-  const [priceFrom, setPriceFrom] = useState('');
-  const [priceTo, setPriceTo] = useState('');
+  const [searchRaw, setSearchRaw] = useState('');
+  const search = useDebounce(searchRaw, 400);
 
   const query: ProductsAvailableQuery = useMemo(
     () => ({
       categoryId: subcategoryId ?? categoryId,
-      priceCashFrom: priceFrom ? Number(priceFrom) : null,
-      priceCashTo: priceTo ? Number(priceTo) : null,
+      search: search || null,
       limit: 24,
     }),
-    [categoryId, subcategoryId, priceFrom, priceTo],
+    [categoryId, subcategoryId, search],
   );
 
   const infinite = useInfiniteProductsFlat(query);
@@ -51,7 +51,7 @@ export function CategoryPageClient({
 
   return (
     <Page back={true}>
-      <Layout className='p-2 pt-4 flex flex-col gap-5'>
+      <Layout className='p-2 pt-4 flex flex-col gap-4'>
         {/* Breadcrumbs */}
         <nav className='flex items-center gap-1 text-xs text-gray-500 flex-wrap'>
           <Link href='/' className='hover:text-black'>Главная</Link>
@@ -71,7 +71,20 @@ export function CategoryPageClient({
           )}
         </nav>
 
-        <h1 className='text-xl font-semibold text-black'>{categoryName}</h1>
+        {/* Title + search */}
+        <div className='flex items-center gap-3'>
+          <h1 className='text-xl font-semibold text-black shrink-0'>{categoryName}</h1>
+          <div className='flex-1 relative'>
+            <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none' />
+            <input
+              type='text'
+              value={searchRaw}
+              onChange={e => setSearchRaw(e.target.value)}
+              placeholder='Поиск по категории...'
+              className='w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-xl bg-white text-black placeholder:text-gray-400 focus:outline-none focus:border-black transition'
+            />
+          </div>
+        </div>
 
         {/* Subcategory navigation on parent page */}
         {!subcategoryId && subcategories.length > 0 && (
@@ -80,40 +93,13 @@ export function CategoryPageClient({
               <Link
                 key={sub.id}
                 href={`/catalog/category/${categorySlug}/${sub.slug}`}
-                className='px-3 py-1.5 bg-gray-100 rounded-full text-sm text-black hover:bg-gray-200 transition-colors'
+                className='px-3 py-1.5 bg-gray-800 text-white rounded-full text-sm hover:bg-gray-700 transition-colors'
               >
                 {sub.name}
               </Link>
             ))}
           </div>
         )}
-
-        {/* Price filters */}
-        <div className='flex gap-2 flex-wrap'>
-          <div className='flex border border-[#4D4D4D] rounded-xl bg-white gap-[2px] h-[30px] md:h-[40px] overflow-hidden'>
-            <Input
-              label='Цена от'
-              containerClassName='!border-0 !h-full'
-              type='number'
-              className='text-[10px] md:text-sm'
-              labelClassName='text-[10px] md:text-sm'
-              lableFocusedClassName='!text-[5px] md:!text-[9px]'
-              value={priceFrom}
-              onChange={e => setPriceFrom(e.target.value)}
-            />
-            <div className='w-[1px] h-[30px] md:h-[40px] bg-[#4D4D4D]' />
-            <Input
-              label='Цена до'
-              containerClassName='!border-0 !h-full'
-              type='number'
-              className='text-[10px] md:text-sm'
-              labelClassName='text-[10px] md:text-sm'
-              lableFocusedClassName='!text-[5px] md:!text-[9px]'
-              value={priceTo}
-              onChange={e => setPriceTo(e.target.value)}
-            />
-          </div>
-        </div>
 
         {/* Empty state */}
         {!isLoading && infinite.items.length === 0 && (
