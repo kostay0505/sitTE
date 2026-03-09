@@ -73,6 +73,7 @@ export function CatalogDetailsClient() {
   const { data: product, status } = useProduct(id);
   const isLoading = status === 'pending';
   const isAuthorized = useAuthStore(s => s.isAuthorized);
+  const setAuthMode = useAuthStore(s => s.setAuthMode);
 
   const currentUserTgId = (() => {
     if (typeof window === 'undefined') return '';
@@ -83,7 +84,7 @@ export function CatalogDetailsClient() {
 
   const sellerTgId = product?.user?.tgId ?? null;
   const isSeller = !!sellerTgId && !!currentUserTgId && sellerTgId === currentUserTgId;
-  const showChatButton = isAuthorized && !isSeller && !!product?.id;
+  const showChatButton = !isSeller && !!product?.id;
 
   useEffect(() => {
     if (product?.id) {
@@ -139,9 +140,15 @@ export function CatalogDetailsClient() {
 
   const chatButton = showChatButton ? (
     <button
-      onClick={handleOpenChat}
+      onClick={() => {
+        if (!isAuthorized) {
+          setAuthMode('login');
+          return;
+        }
+        handleOpenChat();
+      }}
       disabled={chatLoading}
-      className='w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-xl transition-colors disabled:opacity-60'
+      className='w-full flex items-center justify-center gap-2 bg-black hover:bg-black/80 text-white font-semibold py-3 px-4 rounded text-sm transition-colors disabled:opacity-60'
     >
       {chatLoading ? (
         <div className='w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin' />
