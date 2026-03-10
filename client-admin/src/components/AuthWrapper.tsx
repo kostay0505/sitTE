@@ -49,7 +49,7 @@ const bgStyle: React.CSSProperties = {
 export function AuthWrapper({ children }: PropsWithChildren) {
     const pathname = usePathname();
     const router = useRouter();
-    const { isAuthenticated, loading } = useAdminAuth();
+    const { isAuthenticated, loading, logout } = useAdminAuth();
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
     const [pageTitle, setPageTitle] = useState('Административная панель');
 
@@ -87,6 +87,7 @@ export function AuthWrapper({ children }: PropsWithChildren) {
 
     const handleLogout = async () => {
         try { await adminLogout(); } catch {}
+        logout();
         router.push('/login');
     };
 

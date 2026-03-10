@@ -4,53 +4,68 @@ import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { api } from '../api/api';
 
+// Module-level cache — persists across navigations within the same session
+let authCache: boolean | null = null;
+
 export function useAdminAuth() {
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-    const [loading, setLoading] = useState(true);
     const pathname = usePathname();
+    const isLogin = pathname === '/login';
+
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(authCache);
+    const [loading, setLoading] = useState(authCache === null && !isLogin);
 
     useEffect(() => {
-        const checkAuth = async () => {
-            setLoading(true);
+        if (isLogin) {
+            setLoading(false);
+            return;
+        }
 
-            // Если находимся на публичной странице, не делаем запрос
-            if (pathname === '/login') {
-                setIsAuthenticated(null);
-                setLoading(false);
-                return;
-            }
+        // Already have a cached result — no spinner, no request
+        if (authCache !== null) {
+            setIsAuthenticated(authCache);
+            setLoading(false);
+            return;
+        }
 
+        let cancelled = false;
+        (async () => {
             try {
-                // Делаем простой запрос к защищённому endpoint для проверки
                 await api.get('/accounts');
-                setIsAuthenticated(true);
-            } catch (error: any) {
-                setIsAuthenticated(false);
+                if (!cancelled) {
+                    authCache = true;
+                    setIsAuthenticated(true);
+                }
+            } catch {
+                if (!cancelled) {
+                    authCache = false;
+                    setIsAuthenticated(false);
+                }
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
-        };
+        })();
 
-        checkAuth();
-    }, [pathname]);
+        return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const refresh = async () => {
         setLoading(true);
-
         try {
-            // Пытаемся обновить токены
             await api.post('/auth/admin/refresh');
+            authCache = true;
             setIsAuthenticated(true);
-        } catch (error) {
+        } catch {
+            authCache = false;
             setIsAuthenticated(false);
         } finally {
             setLoading(false);
         }
     };
 
-    return {
-        isAuthenticated,
-        loading,
-        refresh
+    const logout = () => {
+        authCache = null;
     };
+
+    return { isAuthenticated, loading, refresh, logout };
 } 
