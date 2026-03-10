@@ -6,6 +6,7 @@ import { ArticleCard } from './ArticleCard';
 import { FeaturedArticle } from './FeaturedArticle';
 import { getArticleCategories, getArticles, getFeaturedArticle } from '@/api/articles/methods';
 import { ArticleSection } from '@/api/articles/types';
+import { Layout } from '@/components/Layout';
 
 interface BlogPageClientProps {
   section: ArticleSection;
@@ -52,7 +53,8 @@ export const BlogPageClient: React.FC<BlogPageClientProps> = ({ section, title, 
   };
 
   return (
-    <div className='max-w-[1200px] mx-auto px-6 pt-10 pb-10'>
+    <Layout>
+    <div className='max-w-[1200px] mx-auto px-6 pt-8 pb-10'>
       {/* Header */}
       <div className='flex flex-col md:flex-row md:items-center gap-4 mb-14'>
         <h1 className='text-3xl md:text-4xl font-medium text-gray-900 flex-shrink-0'>{title}</h1>
@@ -171,5 +173,6 @@ export const BlogPageClient: React.FC<BlogPageClientProps> = ({ section, title, 
         </div>
       )}
     </div>
+    </Layout>
   );
 };
