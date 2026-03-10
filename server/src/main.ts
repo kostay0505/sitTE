@@ -39,6 +39,7 @@ async function bootstrap() {
     'https://sitte2.vercel.app',
     'https://touringexpertsale.ru',
     'https://www.touringexpertsale.ru',
+    'https://api.touringexpertsale.ru',
   ];
 
   app.enableCors({
