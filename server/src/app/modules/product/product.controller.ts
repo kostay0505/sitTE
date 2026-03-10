@@ -3,6 +3,7 @@ import {
     Get,
     Post,
     Put,
+    Patch,
     Delete,
     Body,
     Param,
@@ -60,6 +61,29 @@ export class ProductController {
     @AdminJwtAuth()
     async findAll(): Promise<Product[]> {
         return this.service.findAll();
+    }
+
+    @Get('admin/listings')
+    @AdminJwtAuth()
+    async getAdminListings(@Query('userId') userId: string): Promise<Product[]> {
+        return this.service.getAdminListings(userId || '6737529504');
+    }
+
+    @Patch('admin/:id/listing-status')
+    @AdminJwtAuth()
+    @HttpCode(HttpStatus.OK)
+    async setListingStatus(
+        @Param('id') id: string,
+        @Body() body: { listingStatus: 'active' | 'inactive' | 'sold' }
+    ): Promise<void> {
+        return this.service.setListingStatus(id, body.listingStatus);
+    }
+
+    @Delete('admin/:id')
+    @AdminJwtAuth()
+    @HttpCode(HttpStatus.OK)
+    async adminDelete(@Param('id') id: string): Promise<void> {
+        return this.service.adminDeleteProduct(id);
     }
 
     @Get(':id')

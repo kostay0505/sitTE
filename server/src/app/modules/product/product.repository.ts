@@ -21,6 +21,7 @@ import { HrefService } from '../../services/href/href.service';
 
 export interface ProductRow {
   id: string;
+  customId?: string | null;
   name: string;
   priceCash: string;
   priceNonCash: string;
@@ -97,6 +98,7 @@ export class ProductRepository {
 
   async mapToProduct(row: ProductRow): Promise<Product> {
     const category: CategoryShort | null = row.category_id
+
       ? {
         id: row.category_id,
         name: row.category_name
@@ -137,6 +139,7 @@ export class ProductRepository {
 
     return {
       id: row.id,
+      customId: row.customId ?? null,
       name: row.name,
       priceCash: row.priceCash,
       priceNonCash: row.priceNonCash,
@@ -570,6 +573,11 @@ export class ProductRepository {
       );
     }
 
+    if (query.search) {
+      const escaped = query.search.replace(/'/g, "''").replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+      conditions.push(`product.name LIKE '%${escaped}%'`);
+    }
+
     if (userId && query.isFavorite !== undefined) {
       if (query.isFavorite) {
         conditions.push(`favoriteProduct.isActive = true`);
@@ -614,5 +622,71 @@ export class ProductRepository {
 
   async updateStatus(id: string, status: ProductStatus): Promise<void> {
     await this.db.update(products).set({ status }).where(eq(products.id, id));
+  }
+
+  async findAdminListings(userId: string): Promise<Product[]> {
+    const result = (await this.db.execute(sql`
+      SELECT
+        product.id,
+        product.customId,
+        product.name,
+        product.priceCash,
+        product.priceNonCash,
+        product.currency,
+        product.preview,
+        product.files,
+        product.description,
+        product.quantity,
+        product.quantityType,
+        product.status,
+        product.isActive,
+        product.isDeleted,
+        product.createdAt,
+        category.id as category_id,
+        category.name as category_name,
+        brand.id as brand_id,
+        brand.name as brand_name,
+        brand.photo as brand_photo,
+        brand.description as brand_description,
+        user.tgId as user_tgId,
+        user.username as user_username,
+        user.firstName as user_firstName,
+        user.lastName as user_lastName,
+        user.photoUrl as user_photoUrl,
+        user.phone as user_phone,
+        user.email as user_email,
+        city.id as city_id,
+        city.name as city_name,
+        country.id as country_id,
+        country.name as country_name
+      FROM ${products} product
+      LEFT JOIN ${categories} category ON product.categoryId = category.id
+      LEFT JOIN ${brands} brand ON product.brandId = brand.id
+      LEFT JOIN ${users} user ON product.userId = user.tgId
+      LEFT JOIN ${cities} city ON user.cityId = city.id
+      LEFT JOIN ${countries} country ON city.countryId = country.id
+      WHERE product.userId = ${userId} AND product.isDeleted = false
+      ORDER BY product.createdAt DESC
+    `)) as SqlQueryResult<ProductRow>;
+
+    if (!Array.isArray(result[0])) {
+      throw new Error('Unexpected query result format');
+    }
+
+    return Promise.all(result[0].map(row => this.mapToProduct(row)));
+  }
+
+  async adminDelete(id: string): Promise<void> {
+    await this.db.update(products).set({ isDeleted: true }).where(eq(products.id, id));
+  }
+
+  async setListingStatus(id: string, listingStatus: 'active' | 'inactive' | 'sold'): Promise<void> {
+    if (listingStatus === 'active') {
+      await this.db.update(products).set({ isActive: true, status: ProductStatus.APPROVED }).where(eq(products.id, id));
+    } else if (listingStatus === 'sold') {
+      await this.db.update(products).set({ isActive: false, status: ProductStatus.SOLD }).where(eq(products.id, id));
+    } else {
+      await this.db.update(products).set({ isActive: false, status: ProductStatus.APPROVED }).where(eq(products.id, id));
+    }
   }
 }

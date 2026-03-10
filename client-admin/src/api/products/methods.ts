@@ -59,3 +59,32 @@ export async function updateProduct(id: string, data: Partial<Omit<Product, 'id'
         throw new Error('Не удалось обновить товар');
     }
 }
+
+export async function getAdminListings(userId?: string): Promise<Product[]> {
+    try {
+        const params = userId ? `?userId=${userId}` : '';
+        const response = await api.get<Product[]>(`/products/admin/listings${params}`);
+        return response.data;
+    } catch (error: any) {
+        if (error?.response?.data?.message) throw new Error(error.response.data.message);
+        throw new Error('Не удалось загрузить объявления');
+    }
+}
+
+export async function setListingStatus(id: string, listingStatus: 'active' | 'inactive' | 'sold'): Promise<void> {
+    try {
+        await api.patch(`/products/admin/${id}/listing-status`, { listingStatus });
+    } catch (error: any) {
+        if (error?.response?.data?.message) throw new Error(error.response.data.message);
+        throw new Error('Не удалось изменить статус');
+    }
+}
+
+export async function deleteAdminProduct(id: string): Promise<void> {
+    try {
+        await api.delete(`/products/admin/${id}`);
+    } catch (error: any) {
+        if (error?.response?.data?.message) throw new Error(error.response.data.message);
+        throw new Error('Не удалось удалить объявление');
+    }
+}

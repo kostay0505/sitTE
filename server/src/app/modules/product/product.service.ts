@@ -130,6 +130,18 @@ export class ProductService {
     return this.repository.findById(id, userId);
   }
 
+  async getAdminListings(userId: string): Promise<Product[]> {
+    return this.repository.findAdminListings(userId);
+  }
+
+  async adminDeleteProduct(id: string): Promise<void> {
+    return this.repository.adminDelete(id);
+  }
+
+  async setListingStatus(id: string, listingStatus: 'active' | 'inactive' | 'sold'): Promise<void> {
+    return this.repository.setListingStatus(id, listingStatus);
+  }
+
   async toggleFavorite(
     userId: string,
     dto: ToggleFavoriteDto

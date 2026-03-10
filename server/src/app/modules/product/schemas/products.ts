@@ -8,6 +8,7 @@ import { CurrencyList, QuantityType, ProductStatus } from '../types/enums';
 
 export const products = mysqlTable('Products', {
     id: char('id', { length: 36 }).primaryKey(),
+    customId: varchar('customId', { length: 50 }),
     userId: varchar('userId', { length: 255 }).notNull(),
     name: varchar('name', { length: 255 }).notNull(),
     priceCash: decimal('priceCash', { precision: 10, scale: 2 }).notNull(),
@@ -44,6 +45,7 @@ export const productsRelations = relations(products, ({ one }) => ({
 
 export type Product = {
     id: string;
+    customId?: string | null;
     name: string;
     priceCash: string;
     priceNonCash: string;

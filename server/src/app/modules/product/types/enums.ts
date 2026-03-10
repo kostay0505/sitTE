@@ -13,4 +13,5 @@ export enum ProductStatus {
     MODERATION = 'moderation',
     APPROVED = 'approved',
     REJECTED = 'rejected',
+    SOLD = 'sold',
 }
