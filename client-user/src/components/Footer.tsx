@@ -77,7 +77,7 @@ export const Footer: React.FC = memo(() => {
           <div className='flex flex-col gap-3'>
             <h3 className='text-sm font-semibold uppercase tracking-wider text-gray-400'>Explore</h3>
             {[
-              { label: 'Help center', href: '/help' },
+              { label: 'Help center', href: '/hub' },
               { label: 'Sell on TEM', href: '/sell-on-tem' },
               { label: 'Catalog', href: ROUTES.CATALOG },
             ].map(({ label, href }) => (
