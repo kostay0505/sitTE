@@ -148,25 +148,30 @@ export function CatalogDetailsClient() {
     <Page back={true}>
       {/* ── Sticky product bar (appears when scrolled past header) ── */}
       {showStickyBar && product && (
-        <div className='fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-100 shadow-sm px-4 h-14 flex items-center gap-3'>
-          <span className='flex-1 text-sm font-semibold text-black truncate'>{product.name}</span>
-          {product.priceCash && (
-            <span className='text-sm font-bold text-black shrink-0'>
-              {product.priceCash} {product.currency}
-            </span>
-          )}
-          {showChatButton && (
-            <button
-              onClick={() => {
-                if (!isAuthorized) { setAuthMode('login'); return; }
-                handleOpenChat();
-              }}
-              disabled={chatLoading}
-              className='shrink-0 bg-black text-white text-xs font-medium px-3 py-1.5 rounded hover:bg-gray-800 transition disabled:opacity-60'
-            >
-              {chatLoading ? '...' : 'Написать'}
-            </button>
-          )}
+        <div className='fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-100 shadow-sm h-14'>
+          <div className='max-w-[1280px] mx-auto px-6 h-full flex items-center gap-3'>
+            {/* Seller avatar */}
+            <div className='shrink-0 w-8 h-8 rounded-full overflow-hidden bg-gray-200'>
+              {product.user?.photoUrl ? (
+                <img src={toImageSrc(product.user.photoUrl)} alt={sellerName} className='w-full h-full object-cover' />
+              ) : (
+                <div className='w-full h-full flex items-center justify-center text-xs font-bold text-gray-400'>
+                  {sellerName.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+            {/* Seller name */}
+            <span className='text-xs text-gray-500 shrink-0 hidden sm:block'>{sellerName}</span>
+            <span className='text-gray-300 hidden sm:block'>·</span>
+            {/* Product name */}
+            <span className='flex-1 text-sm font-semibold text-black truncate'>{product.name}</span>
+            {/* Price */}
+            {product.priceCash && (
+              <span className='text-sm font-bold text-black shrink-0'>
+                {product.priceCash} {product.currency}
+              </span>
+            )}
+          </div>
         </div>
       )}
 
