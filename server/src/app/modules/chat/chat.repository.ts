@@ -154,4 +154,42 @@ export class ChatRepository {
     );
     return Number(this.rows(result)[0]?.cnt ?? 0);
   }
+
+  // ── Admin-only ──────────────────────────────────────────────────────────────
+
+  async getAllChats(limit = 200) {
+    const result = await this.db.execute(sql`
+      SELECT c.id, c.productId, c.buyerId, c.sellerId,
+             c.unreadBuyer, c.unreadSeller, c.lastMessageAt, c.createdAt,
+             p.name as productName, p.preview as productPreview,
+             buyer.firstName as buyerFirstName, buyer.username as buyerUsername, buyer.photoUrl as buyerPhoto,
+             (SELECT body FROM Messages m WHERE m.chatId = c.id AND m.deletedAt IS NULL ORDER BY m.createdAt DESC LIMIT 1) as lastMessage
+      FROM Chats c
+      LEFT JOIN Products p ON p.id = c.productId
+      LEFT JOIN Users buyer ON buyer.tgId = c.buyerId
+      ORDER BY c.lastMessageAt DESC
+      LIMIT ${limit}
+    `);
+    return { items: this.rows(result), nextCursor: null };
+  }
+
+  async markReadAdmin(chatId: string) {
+    await this.db.execute(sql`UPDATE Chats SET unreadSeller = 0 WHERE id = ${chatId}`);
+    await this.db.execute(sql`UPDATE Messages SET isRead = true WHERE chatId = ${chatId} AND isRead = false`);
+  }
+
+  async createAdminMessage(chatId: string, body: string) {
+    const id = crypto.randomUUID();
+    await this.db.execute(sql`
+      INSERT INTO Messages (id, chatId, senderId, body, imageUrl, isRead, createdAt)
+      VALUES (${id}, ${chatId}, 'admin-support', ${body}, NULL, false, NOW())
+    `);
+    await this.db.execute(sql`
+      UPDATE Chats SET lastMessageAt = NOW(), unreadBuyer = unreadBuyer + 1 WHERE id = ${chatId}
+    `);
+    const result = await this.db.execute(sql`
+      SELECT id, chatId, senderId, body, imageUrl, isRead, createdAt FROM Messages WHERE id = ${id} LIMIT 1
+    `);
+    return this.rows(result)[0];
+  }
 }

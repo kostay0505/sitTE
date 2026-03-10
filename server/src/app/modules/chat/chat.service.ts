@@ -82,6 +82,29 @@ export class ChatService implements OnModuleInit {
     return { ok: true };
   }
 
+  // ── Admin ───────────────────────────────────────────────────────────────────
+
+  async getAllChats() {
+    return this.chatRepository.getAllChats();
+  }
+
+  async getMessagesAdmin(chatId: string) {
+    return this.chatRepository.getMessages(chatId);
+  }
+
+  async markReadAdmin(chatId: string) {
+    await this.chatRepository.markReadAdmin(chatId);
+    return { ok: true };
+  }
+
+  async replyAdmin(chatId: string, body: string) {
+    const chat = await this.chatRepository.getChatById(chatId);
+    if (!chat) throw new NotFoundException('Chat not found');
+    const message = await this.chatRepository.createAdminMessage(chatId, body);
+    this.chatGateway.emitNewMessage(chatId, message);
+    return message;
+  }
+
   private async notifySellerTelegram(chat: any, message: any) {
     try {
       const { Bot } = await import('grammy');
