@@ -30,6 +30,9 @@ import { ChatModule } from './modules/chat/chat.module';
 import { BusinessPageModule } from './modules/business-page/business-page.module';
 import { HomeModule } from './modules/home/home.module';
 import { SiteContentModule } from './modules/site-content/site-content.module';
+import { CrmModule } from './modules/crm/crm.module';
+import { DriveModule } from './modules/drive/drive.module';
+import { ArticlesModule } from './modules/articles/articles.module';
 
 @Module({
   imports: [
@@ -105,6 +108,9 @@ import { SiteContentModule } from './modules/site-content/site-content.module';
     BusinessPageModule,
     HomeModule,
     SiteContentModule,
+    CrmModule,
+    DriveModule,
+    ArticlesModule,
   ],
   controllers: [],
   providers: [Logger]
